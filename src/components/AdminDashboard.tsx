@@ -413,11 +413,47 @@ const AdminDashboard = () => {
     );
   }
 
+  const handleAddAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newAgent.name || !newAgent.email || !newAgent.password || !newAgent.reference) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, 'agents'), {
+        ...newAgent,
+        createdAt: Timestamp.now()
+      });
+      
+      setNewAgent({ name: '', email: '', password: '', reference: '' });
+      setShowAddAgent(false);
+      fetchAgents();
+      
+      toast({
+        title: "Agent Added",
+        description: `${newAgent.name} has been added as an agent`,
+      });
+    } catch (error) {
+      console.error('Error adding agent:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add agent",
+        variant: "destructive"
+      });
+    }
+  };
+
   const tabs = [
-    { id: 'applications', label: 'Applications', icon: '📋' },
-    { id: 'references', label: 'References', icon: '👥' },
-    { id: 'agents', label: 'Agents', icon: '🔐' },
-    { id: 'analytics', label: 'Analytics', icon: '📊' }
+    { id: 'applications', label: 'Applications', icon: Users },
+    { id: 'references', label: 'References', icon: UserCheck },
+    { id: 'agents', label: 'Agents', icon: Shield },
+    { id: 'analytics', label: 'Analytics', icon: TrendingUp }
   ];
 
   return (
@@ -901,7 +937,7 @@ const AdminDashboard = () => {
                   value={newReferenceName}
                   onChange={(e) => setNewReferenceName(e.target.value)}
                   placeholder="Enter reference name"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                 />
                 <button
                   onClick={addReference}
@@ -990,14 +1026,15 @@ const AdminDashboard = () => {
               <h2 className="text-2xl font-bold text-gray-900">Agent Management</h2>
               <button
                 onClick={() => setShowAddAgent(true)}
-                className="premium-cta-button"
+                className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-medium flex items-center"
               >
+                <Plus className="w-4 h-4 mr-2" />
                 Add Agent
               </button>
             </div>
 
             {showAddAgent && (
-              <div className="professional-card p-6">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
                 <form onSubmit={handleAddAgent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
@@ -1005,7 +1042,7 @@ const AdminDashboard = () => {
                     placeholder="Agent Name"
                     value={newAgent.name}
                     onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
-                    className="premium-input"
+                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     required
                   />
                   <input
@@ -1013,7 +1050,7 @@ const AdminDashboard = () => {
                     placeholder="Email"
                     value={newAgent.email}
                     onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
-                    className="premium-input"
+                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     required
                   />
                   <input
@@ -1021,13 +1058,13 @@ const AdminDashboard = () => {
                     placeholder="Password"
                     value={newAgent.password}
                     onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
-                    className="premium-input"
+                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     required
                   />
                   <select
                     value={newAgent.reference}
                     onChange={(e) => setNewAgent({...newAgent, reference: e.target.value})}
-                    className="premium-input"
+                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     required
                   >
                     <option value="">Select Reference</option>
@@ -1036,11 +1073,16 @@ const AdminDashboard = () => {
                     ))}
                   </select>
                   <div className="md:col-span-2 flex gap-2">
-                    <button type="submit" className="premium-cta-button">Add Agent</button>
+                    <button 
+                      type="submit" 
+                      className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-medium"
+                    >
+                      Add Agent
+                    </button>
                     <button
                       type="button"
                       onClick={() => setShowAddAgent(false)}
-                      className="premium-secondary-button"
+                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-all duration-300 font-medium"
                     >
                       Cancel
                     </button>
@@ -1049,7 +1091,7 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            <div className="professional-card">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-gray-50">
