@@ -30,20 +30,12 @@ const RegistrationForm = () => {
 
   const fetchReferences = async () => {
     try {
-      // Fetch from agents collection instead of references
-      const agentsSnapshot = await getDocs(collection(db, 'agents'));
-      const referencesList = agentsSnapshot.docs.map(doc => doc.data().referenceLabel);
-      
-      // Also check references collection for backward compatibility
       const referencesSnapshot = await getDocs(collection(db, 'references'));
-      const additionalRefs = referencesSnapshot.docs.map(doc => doc.data().name);
+      const referencesList = referencesSnapshot.docs.map(doc => doc.data().name);
       
-      // Combine and remove duplicates
-      const allReferences = [...new Set([...referencesList, ...additionalRefs])];
-      
-      // Default references if none exist
+      // Default references if none exist in Firestore
       const defaultReferences = ['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN'];
-      setReferences(allReferences.length > 0 ? allReferences : defaultReferences);
+      setReferences(referencesList.length > 0 ? referencesList : defaultReferences);
     } catch (error) {
       console.error('Error fetching references:', error);
       // Fallback to default references
