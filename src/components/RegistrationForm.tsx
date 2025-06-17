@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Calendar, GraduationCap, Clock, Users, UserCheck } from 'lucide-react';
+import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Calendar, GraduationCap, Clock, Users, UserCheck, Briefcase } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const RegistrationForm = () => {
@@ -14,6 +13,7 @@ const RegistrationForm = () => {
     gender: '',
     education: '',
     city: '',
+    currentPosition: '',
     workingHours: '',
     weeklyAvailability: '',
     whyThisRole: '',
@@ -71,6 +71,7 @@ const RegistrationForm = () => {
     if (!formData.gender) newErrors.gender = 'Gender is required';
     if (!formData.education) newErrors.education = 'Education qualification is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
+    if (!formData.currentPosition) newErrors.currentPosition = 'Current position is required';
     if (!formData.workingHours) newErrors.workingHours = 'Preferred working hours is required';
     if (!formData.weeklyAvailability) newErrors.weeklyAvailability = 'Weekly availability is required';
     
@@ -175,6 +176,7 @@ const RegistrationForm = () => {
         gender: '',
         education: '',
         city: '',
+        currentPosition: '',
         workingHours: '',
         weeklyAvailability: '',
         whyThisRole: '',
@@ -216,6 +218,7 @@ const RegistrationForm = () => {
            formData.gender &&
            formData.education &&
            formData.city.trim() &&
+           formData.currentPosition &&
            formData.workingHours &&
            formData.weeklyAvailability &&
            formData.reference &&
@@ -456,6 +459,36 @@ const RegistrationForm = () => {
                     <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.city}
+                    </p>
+                  )}
+                </div>
+
+                {/* Current Position */}
+                <div className="space-y-3">
+                  <label htmlFor="currentPosition" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Briefcase className="w-4 h-4 mr-2 text-orange-500" />
+                    Current Position *
+                  </label>
+                  <select
+                    id="currentPosition"
+                    name="currentPosition"
+                    value={formData.currentPosition}
+                    onChange={handleChange}
+                    className={`premium-input ${
+                      errors.currentPosition ? 'border-red-300 bg-red-50' : ''
+                    }`}
+                  >
+                    <option value="">Select your current position</option>
+                    <option value="Employed">Employed</option>
+                    <option value="Unemployed">Unemployed</option>
+                    <option value="Self-Employed">Self-Employed</option>
+                    <option value="Student">Student</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.currentPosition && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.currentPosition}
                     </p>
                   )}
                 </div>
