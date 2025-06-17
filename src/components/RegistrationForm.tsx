@@ -44,8 +44,8 @@ const RegistrationForm = () => {
     
     if (!formData.whyThisRole.trim()) {
       newErrors.whyThisRole = 'Please tell us why you want this role';
-    } else if (formData.whyThisRole.trim().length < 100) {
-      newErrors.whyThisRole = 'Please provide at least 100 characters explaining why you want this role';
+    } else if (formData.whyThisRole.trim().length < 20) {
+      newErrors.whyThisRole = 'Please provide at least 20 characters explaining why you want this role';
     }
 
     setErrors(newErrors);
@@ -158,6 +158,16 @@ const RegistrationForm = () => {
     return numbers.slice(0, 10);
   };
 
+  const isFormValid = () => {
+    return formData.fullName.trim() &&
+           formData.email.trim() &&
+           formData.phone.trim() &&
+           formData.city.trim() &&
+           formData.workingHours &&
+           formData.weeklyAvailability &&
+           formData.whyThisRole.trim().length >= 20;
+  };
+
   if (showSuccess) {
     return (
       <section id="registration-form" className="py-20 bg-gradient-to-r from-green-50 to-emerald-50">
@@ -171,7 +181,7 @@ const RegistrationForm = () => {
               </p>
               <button
                 onClick={() => setShowSuccess(false)}
-                className="btn-secondary"
+                className="premium-secondary-button"
               >
                 Submit Another Application
               </button>
@@ -210,8 +220,8 @@ const RegistrationForm = () => {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
-                      errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.fullName ? 'border-red-300 bg-red-50' : ''
                     }`}
                     placeholder="Enter your full name"
                   />
@@ -235,8 +245,8 @@ const RegistrationForm = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
-                      errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.email ? 'border-red-300 bg-red-50' : ''
                     }`}
                     placeholder="your.email@example.com"
                   />
@@ -266,8 +276,8 @@ const RegistrationForm = () => {
                         setErrors(prev => ({ ...prev, phone: '' }));
                       }
                     }}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
-                      errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.phone ? 'border-red-300 bg-red-50' : ''
                     }`}
                     placeholder="WhatsApp preferred"
                     maxLength={10}
@@ -293,8 +303,8 @@ const RegistrationForm = () => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
-                      errors.city ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.city ? 'border-red-300 bg-red-50' : ''
                     }`}
                     placeholder="Your current city"
                   />
@@ -316,8 +326,8 @@ const RegistrationForm = () => {
                     name="workingHours"
                     value={formData.workingHours}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 focus:input-focus transition-all duration-300 ${
-                      errors.workingHours ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.workingHours ? 'border-red-300 bg-red-50' : ''
                     }`}
                   >
                     <option value="">Select your preferred time</option>
@@ -343,8 +353,8 @@ const RegistrationForm = () => {
                     name="weeklyAvailability"
                     value={formData.weeklyAvailability}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 focus:input-focus transition-all duration-300 ${
-                      errors.weeklyAvailability ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                    className={`premium-input ${
+                      errors.weeklyAvailability ? 'border-red-300 bg-red-50' : ''
                     }`}
                   >
                     <option value="">Select your availability</option>
@@ -372,10 +382,10 @@ const RegistrationForm = () => {
                   value={formData.whyThisRole}
                   onChange={handleChange}
                   rows={5}
-                  className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 resize-none ${
-                    errors.whyThisRole ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
+                  className={`premium-input resize-none ${
+                    errors.whyThisRole ? 'border-red-300 bg-red-50' : ''
                   }`}
-                  placeholder="Tell us why you're interested in this SRM position and what makes you a good fit... (minimum 100 characters)"
+                  placeholder="Tell us why you're interested in this SRM position and what makes you a good fit... (minimum 20 characters)"
                 />
                 <div className="flex justify-between items-center">
                   {errors.whyThisRole && (
@@ -384,8 +394,10 @@ const RegistrationForm = () => {
                       {errors.whyThisRole}
                     </p>
                   )}
-                  <p className="text-gray-500 text-xs ml-auto">
-                    {formData.whyThisRole.length}/100 characters minimum
+                  <p className={`text-xs ml-auto ${
+                    formData.whyThisRole.length < 20 ? 'text-red-500' : 'text-gray-500'
+                  }`}>
+                    {formData.whyThisRole.length}/20 characters minimum
                   </p>
                 </div>
               </div>
@@ -394,18 +406,18 @@ const RegistrationForm = () => {
               <div className="pt-6">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  disabled={isSubmitting || !isFormValid()}
+                  className="w-full premium-submit-button disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isSubmitting ? (
                     <>
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                      Submitting Application...
+                      SUBMITTING APPLICATION...
                     </>
                   ) : (
                     <>
                       <Send className="w-5 h-5 mr-2" />
-                      Submit Application
+                      SUBMIT APPLICATION
                     </>
                   )}
                 </button>

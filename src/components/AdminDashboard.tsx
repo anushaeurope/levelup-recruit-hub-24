@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield } from 'lucide-react';
+import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Applicant {
@@ -15,8 +15,9 @@ interface Applicant {
   workingHours: string;
   weeklyAvailability: string;
   whyThisRole: string;
-  status: 'New' | 'Contacted' | 'Hired';
+  status: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review';
   salesCompleted: number;
+  notes?: string;
   submittedAt: Timestamp;
 }
 
@@ -29,6 +30,9 @@ const AdminDashboard = () => {
   const [cityFilter, setCityFilter] = useState('All');
   const [editingApplicant, setEditingApplicant] = useState<string | null>(null);
   const [editingSales, setEditingSales] = useState<number>(0);
+  const [editingNotes, setEditingNotes] = useState<string>('');
+  const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     fetchApplicants();
@@ -67,7 +71,8 @@ const AdminDashboard = () => {
       filtered = filtered.filter(applicant =>
         applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.city.toLowerCase().includes(searchTerm.toLowerCase())
+        applicant.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        applicant.phone.includes(searchTerm)
       );
     }
 
@@ -82,7 +87,7 @@ const AdminDashboard = () => {
     setFilteredApplicants(filtered);
   };
 
-  const updateApplicantStatus = async (id: string, newStatus: 'New' | 'Contacted' | 'Hired') => {
+  const updateApplicantStatus = async (id: string, newStatus: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review') => {
     try {
       await updateDoc(doc(db, 'applicants', id), { status: newStatus });
       setApplicants(prev => prev.map(app => 
@@ -123,6 +128,47 @@ const AdminDashboard = () => {
     }
   };
 
+  const updateNotes = async (id: string, notes: string) => {
+    try {
+      await updateDoc(doc(db, 'applicants', id), { notes });
+      setApplicants(prev => prev.map(app => 
+        app.id === id ? { ...app, notes } : app
+      ));
+      setEditingApplicant(null);
+      setEditingNotes('');
+      toast({
+        title: "Notes Updated",
+        description: "Applicant notes have been updated",
+      });
+    } catch (error) {
+      console.error('Error updating notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update notes",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteApplicant = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'applicants', id));
+      setApplicants(prev => prev.filter(app => app.id !== id));
+      setShowDeleteConfirm(null);
+      toast({
+        title: "Applicant Deleted",
+        description: "Applicant has been removed from the system",
+      });
+    } catch (error) {
+      console.error('Error deleting applicant:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete applicant",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -140,16 +186,16 @@ const AdminDashboard = () => {
   };
 
   const handleWhatsAppClick = (phone: string, name: string) => {
-    const message = `Hi ${name}, I'm reaching from ManaCLG LevelUp regarding your SRM application.`;
+    const message = `Hi ${name}, I'm contacting you from ManaCLG LevelUp about your SRM application.`;
     const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const exportToExcel = () => {
-    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Registrations Completed', 'Application Date'];
+    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Registrations Completed', 'Notes', 'Application Date'];
     const csvContent = [
       headers.join(','),
-      ...applicants.map(app => [
+      ...filteredApplicants.map(app => [
         app.fullName,
         app.email,
         app.phone,
@@ -158,6 +204,7 @@ const AdminDashboard = () => {
         app.weeklyAvailability,
         app.status,
         app.salesCompleted,
+        app.notes || '',
         app.submittedAt?.toDate().toLocaleDateString()
       ].join(','))
     ].join('\n');
@@ -166,13 +213,13 @@ const AdminDashboard = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'srm_applicants.csv';
+    a.download = `srm_applicants_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
     
     toast({
       title: "Export Successful",
-      description: "Applicants data has been exported to CSV file",
+      description: `${filteredApplicants.length} applicant records exported to CSV`,
     });
   };
 
@@ -182,8 +229,12 @@ const AdminDashboard = () => {
         return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'Contacted':
         return 'text-orange-600 bg-orange-50 border-orange-200';
+      case 'In Review':
+        return 'text-purple-600 bg-purple-50 border-purple-200';
       case 'Hired':
         return 'text-green-600 bg-green-50 border-green-200';
+      case 'Rejected':
+        return 'text-red-600 bg-red-50 border-red-200';
       default:
         return 'text-gray-600 bg-gray-50 border-gray-200';
     }
@@ -316,7 +367,9 @@ const AdminDashboard = () => {
                   <option value="All">All Status</option>
                   <option value="New">New</option>
                   <option value="Contacted">Contacted</option>
+                  <option value="In Review">In Review</option>
                   <option value="Hired">Hired</option>
+                  <option value="Rejected">Rejected</option>
                 </select>
 
                 {/* City Filter */}
@@ -429,29 +482,45 @@ const AdminDashboard = () => {
                     <td className="px-6 py-4">
                       <select
                         value={applicant.status}
-                        onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as 'New' | 'Contacted' | 'Hired')}
+                        onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
                         className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-orange-500`}
                       >
                         <option value="New">New</option>
                         <option value="Contacted">Contacted</option>
+                        <option value="In Review">In Review</option>
                         <option value="Hired">Hired</option>
+                        <option value="Rejected">Rejected</option>
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => setViewingApplicant(applicant)}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                          title="View details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleCallClick(applicant.phone)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
                           title="Call applicant"
                         >
-                          📞
+                          <Phone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
                           className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
                           title="WhatsApp message"
                         >
-                          💬
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(applicant.id)}
+                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
+                          title="Delete applicant"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -476,12 +545,14 @@ const AdminDashboard = () => {
                     </div>
                     <select
                       value={applicant.status}
-                      onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as 'New' | 'Contacted' | 'Hired')}
+                      onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
                       className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none`}
                     >
                       <option value="New">New</option>
                       <option value="Contacted">Contacted</option>
+                      <option value="In Review">In Review</option>
                       <option value="Hired">Hired</option>
+                      <option value="Rejected">Rejected</option>
                     </select>
                   </div>
 
@@ -540,18 +611,33 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-4 pt-3 border-t border-gray-200">
+                  <div className="flex items-center space-x-2 pt-3 border-t border-gray-200">
                     <button
-                      onClick={() => handleCallClick(applicant.phone)}
+                      onClick={() => setViewingApplicant(applicant)}
                       className="flex items-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-300 text-sm font-medium"
                     >
-                      📞 Call
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </button>
+                    <button
+                      onClick={() => handleCallClick(applicant.phone)}
+                      className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
+                    >
+                      <Phone className="w-4 h-4 mr-1" />
+                      Call
                     </button>
                     <button
                       onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
                       className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
                     >
-                      💬 WhatsApp
+                      <MessageCircle className="w-4 h-4 mr-1" />
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => setShowDeleteConfirm(applicant.id)}
+                      className="flex items-center px-2 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-300 text-sm font-medium"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
@@ -572,12 +658,149 @@ const AdminDashboard = () => {
       <div className="fixed bottom-5 right-5 z-50">
         <button
           onClick={exportToExcel}
-          className="flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          className="premium-cta-button"
         >
           <Download className="w-5 h-5 mr-2" />
           Export as Excel
         </button>
       </div>
+
+      {/* Applicant Detail Modal */}
+      {viewingApplicant && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Applicant Details</h3>
+              <button
+                onClick={() => setViewingApplicant(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircle className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
+                <p className="text-gray-900">{viewingApplicant.fullName}</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
+                  <p className="text-gray-900">{viewingApplicant.email}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
+                  <p className="text-gray-900">{viewingApplicant.phone}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
+                  <p className="text-gray-900">{viewingApplicant.city}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(viewingApplicant.status)}`}>
+                    {viewingApplicant.status}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Working Hours</label>
+                  <p className="text-gray-900">{viewingApplicant.workingHours}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Weekly Availability</label>
+                  <p className="text-gray-900">{viewingApplicant.weeklyAvailability}</p>
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Why This Role?</label>
+                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingApplicant.whyThisRole}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Admin Notes</label>
+                {editingApplicant === `notes-${viewingApplicant.id}` ? (
+                  <div className="space-y-2">
+                    <textarea
+                      value={editingNotes}
+                      onChange={(e) => setEditingNotes(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                      rows={3}
+                      placeholder="Add notes about this applicant..."
+                    />
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => updateNotes(viewingApplicant.id, editingNotes)}
+                        className="px-3 py-1 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-sm"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingApplicant(null);
+                          setEditingNotes('');
+                        }}
+                        className="px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start space-x-2">
+                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg flex-1">
+                      {viewingApplicant.notes || 'No notes added yet'}
+                    </p>
+                    <button
+                      onClick={() => {
+                        setEditingApplicant(`notes-${viewingApplicant.id}`);
+                        setEditingNotes(viewingApplicant.notes || '');
+                      }}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this applicant? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => deleteApplicant(showDeleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-8">

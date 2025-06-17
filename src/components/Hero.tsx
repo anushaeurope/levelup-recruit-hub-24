@@ -41,10 +41,10 @@ const Hero = () => {
             <span className="block text-3xl md:text-5xl lg:text-6xl text-gray-700">in Education Outreach</span>
           </h1>
 
-          {/* Subheading */}
+          {/* Updated subheading with new copy */}
           <p className="text-xl md:text-2xl text-gray-600 mb-8 animate-fade-in-up-delay max-w-4xl mx-auto leading-relaxed">
             Earn a Fixed <span className="text-green-600 font-bold">₹10,000/month</span> + 
-            Up to <span className="gradient-text-secondary font-bold">₹1,000 per extra student registration</span>
+            <span className="gradient-text-secondary font-bold"> ₹500 per extra student registration</span>
           </p>
 
           {/* Hero Image */}
@@ -59,12 +59,12 @@ const Hero = () => {
             </div>
           </div>
 
-          {/* CTA Button */}
+          {/* Updated premium CTA Button */}
           <button
             onClick={scrollToForm}
-            className="group relative btn-primary text-xl animate-fade-in-up-delay"
+            className="group relative premium-cta-button text-xl animate-fade-in-up-delay"
           >
-            <span className="mr-3">Apply Now</span>
+            <span className="mr-3">APPLY NOW</span>
             <ArrowDown className="w-5 h-5 group-hover:translate-y-1 transition-transform duration-300" />
           </button>
 

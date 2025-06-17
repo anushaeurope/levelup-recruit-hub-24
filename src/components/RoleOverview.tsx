@@ -1,103 +1,95 @@
 
 import React from 'react';
-import { DollarSign, Clock, Target, TrendingUp, Award, BookOpen, Home, CheckCircle } from 'lucide-react';
+import { DollarSign, Clock, Target, TrendingUp, Award, Home } from 'lucide-react';
 
 const RoleOverview = () => {
-  const features = [
+  const benefits = [
     {
-      icon: DollarSign,
+      icon: <DollarSign className="w-8 h-8 text-green-600" />,
       title: "Monthly Salary",
       value: "₹10,000",
-      description: "Fixed monthly payment via UPI or bank transfer",
-      color: "from-green-500 to-emerald-600"
+      description: "Fixed monthly compensation"
     },
     {
-      icon: Clock,
+      icon: <Clock className="w-8 h-8 text-blue-600" />,
       title: "Daily Work",
       value: "4 hours/day",
-      description: "OR 12+ hours/week minimum commitment",
-      color: "from-blue-500 to-cyan-600"
+      description: "12+ hours/week minimum"
     },
     {
-      icon: Target,
+      icon: <Target className="w-8 h-8 text-orange-600" />,
       title: "Minimum Target",
       value: "1 registration/week",
-      description: "Only confirmed student enrollments count",
-      color: "from-purple-500 to-violet-600"
+      description: "Achievable weekly goal"
     },
     {
-      icon: TrendingUp,
+      icon: <TrendingUp className="w-8 h-8 text-purple-600" />,
       title: "Incentives",
-      value: "₹500–₹1000",
-      description: "Per confirmed registration after 4/month",
-      color: "from-orange-500 to-red-600"
+      value: "₹500 per registration",
+      description: "After 4 confirmed registrations/month"
     },
     {
-      icon: Award,
+      icon: <Award className="w-8 h-8 text-red-600" />,
       title: "Benefits",
       value: "LOR + Certificate",
-      description: "Experience Certificate, Monthly Payslip",
-      color: "from-pink-500 to-rose-600"
+      description: "Experience Certificate, Monthly Payslip"
     },
     {
-      icon: BookOpen,
-      title: "Free Training",
-      value: "1 hour daily",
-      description: "Guided training before work begins",
-      color: "from-indigo-500 to-blue-600"
-    },
-    {
-      icon: Home,
-      title: "Work From Home",
-      value: "100% Remote",
-      description: "Work from anywhere with internet",
-      color: "from-teal-500 to-cyan-600"
-    },
-    {
-      icon: CheckCircle,
-      title: "Professional Growth",
-      value: "Career Development",
-      description: "Build communication & sales skills",
-      color: "from-emerald-500 to-green-600"
+      icon: <Home className="w-8 h-8 text-indigo-600" />,
+      title: "Work Mode",
+      value: "Work from Home",
+      description: "Remote work + Free daily training"
     }
   ];
 
   return (
     <section className="py-20 bg-white">
       <div className="container mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 animate-fade-in-up">
-            SRM Role Details
-          </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-fade-in-up-delay">
-            Everything you need to know about becoming a Student Relationship Manager at ManaCLG LevelUp
-          </p>
-        </div>
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 animate-fade-in-up">
+              SRM Role Details
+            </h2>
+            <p className="text-xl text-gray-600 animate-fade-in-up-delay max-w-3xl mx-auto">
+              Join our team and start building meaningful relationships with students while developing your professional skills
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {features.map((feature, index) => (
-            <div
-              key={index}
-              className="professional-card p-6 hover:shadow-xl transition-all duration-500 hover:scale-105 animate-fade-in-up"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              {/* Icon */}
-              <div className={`inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r ${feature.color} rounded-xl mb-4 shadow-lg`}>
-                <feature.icon className="w-7 h-7 text-white" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {benefits.map((benefit, index) => (
+              <div
+                key={index}
+                className="professional-card p-8 text-center group professional-hover animate-fade-in-up"
+                style={{ animationDelay: `${index * 150}ms` }}
+              >
+                <div className="mb-6 flex justify-center">
+                  <div className="p-4 rounded-2xl bg-gray-50 group-hover:scale-110 transition-transform duration-300">
+                    {benefit.icon}
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{benefit.title}</h3>
+                <p className="text-2xl font-black gradient-text-primary mb-3">{benefit.value}</p>
+                <p className="text-gray-600">{benefit.description}</p>
               </div>
+            ))}
+          </div>
 
-              {/* Content */}
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                {feature.title}
+          <div className="mt-16 text-center">
+            <div className="professional-card p-8 md:p-12 bg-gradient-to-r from-orange-50 to-blue-50">
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+                Ready to Start Your Career?
               </h3>
-              <p className="text-xl font-black gradient-text-primary mb-3">
-                {feature.value}
+              <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
+                Join hundreds of students who have kickstarted their professional journey with ManaCLG LevelUp
               </p>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {feature.description}
-              </p>
+              <a
+                href="#registration-form"
+                className="premium-cta-button text-lg"
+              >
+                APPLY NOW
+              </a>
             </div>
-          ))}
+          </div>
         </div>
       </div>
     </section>
