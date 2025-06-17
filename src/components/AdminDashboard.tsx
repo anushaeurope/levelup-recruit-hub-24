@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, addDoc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus } from 'lucide-react';
+import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus, Settings, UserCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Applicant {
@@ -11,36 +10,52 @@ interface Applicant {
   fullName: string;
   email: string;
   phone: string;
+  age: string;
+  gender: string;
+  education: string;
   city: string;
   workingHours: string;
   weeklyAvailability: string;
   whyThisRole: string;
+  reference: string;
   status: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review';
   salesCompleted: number;
   notes?: string;
   submittedAt: Timestamp;
 }
 
+interface Reference {
+  id: string;
+  name: string;
+}
+
 const AdminDashboard = () => {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [filteredApplicants, setFilteredApplicants] = useState<Applicant[]>([]);
+  const [references, setReferences] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [cityFilter, setCityFilter] = useState('All');
+  const [referenceFilter, setReferenceFilter] = useState('All');
+  const [activeTab, setActiveTab] = useState('applicants');
   const [editingApplicant, setEditingApplicant] = useState<string | null>(null);
   const [editingSales, setEditingSales] = useState<number>(0);
   const [editingNotes, setEditingNotes] = useState<string>('');
   const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [newReferenceName, setNewReferenceName] = useState('');
+  const [editingReference, setEditingReference] = useState<string | null>(null);
+  const [editingReferenceName, setEditingReferenceName] = useState('');
 
   useEffect(() => {
     fetchApplicants();
+    fetchReferences();
   }, []);
 
   useEffect(() => {
     filterApplicants();
-  }, [applicants, searchTerm, statusFilter, cityFilter]);
+  }, [applicants, searchTerm, statusFilter, cityFilter, referenceFilter]);
 
   const fetchApplicants = async () => {
     try {
@@ -64,6 +79,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchReferences = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, 'references'));
+      const referencesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name
+      })) as Reference[];
+      
+      // If no references exist, create default ones
+      if (referencesData.length === 0) {
+        const defaultReferences = ['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN'];
+        for (const refName of defaultReferences) {
+          await addDoc(collection(db, 'references'), { name: refName });
+        }
+        fetchReferences(); // Refetch after creating defaults
+      } else {
+        setReferences(referencesData);
+      }
+    } catch (error) {
+      console.error('Error fetching references:', error);
+    }
+  };
+
   const filterApplicants = () => {
     let filtered = applicants;
 
@@ -84,7 +122,70 @@ const AdminDashboard = () => {
       filtered = filtered.filter(applicant => applicant.city === cityFilter);
     }
 
+    if (referenceFilter !== 'All') {
+      filtered = filtered.filter(applicant => applicant.reference === referenceFilter);
+    }
+
     setFilteredApplicants(filtered);
+  };
+
+  const addReference = async () => {
+    if (!newReferenceName.trim()) return;
+    
+    try {
+      await addDoc(collection(db, 'references'), { name: newReferenceName.trim() });
+      setNewReferenceName('');
+      fetchReferences();
+      toast({
+        title: "Reference Added",
+        description: `${newReferenceName} has been added to the reference list`,
+      });
+    } catch (error) {
+      console.error('Error adding reference:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add reference",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const updateReference = async (id: string, newName: string) => {
+    try {
+      await updateDoc(doc(db, 'references', id), { name: newName });
+      setEditingReference(null);
+      setEditingReferenceName('');
+      fetchReferences();
+      toast({
+        title: "Reference Updated",
+        description: "Reference name has been updated",
+      });
+    } catch (error) {
+      console.error('Error updating reference:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update reference",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteReference = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'references', id));
+      fetchReferences();
+      toast({
+        title: "Reference Deleted",
+        description: "Reference has been removed",
+      });
+    } catch (error) {
+      console.error('Error deleting reference:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete reference",
+        variant: "destructive"
+      });
+    }
   };
 
   const updateApplicantStatus = async (id: string, newStatus: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review') => {
@@ -186,22 +287,26 @@ const AdminDashboard = () => {
   };
 
   const handleWhatsAppClick = (phone: string, name: string) => {
-    const message = `Hi ${name}, I'm contacting you from ManaCLG LevelUp about your SRM application.`;
+    const message = `Hi ${name}, thank you for applying as SRM at ManaCLG LevelUp. Our team will be in touch shortly.`;
     const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const exportToExcel = () => {
-    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Registrations Completed', 'Notes', 'Application Date'];
+    const headers = ['Name', 'Email', 'Phone', 'Age', 'Gender', 'Education', 'City', 'Working Hours', 'Weekly Availability', 'Reference', 'Status', 'Registrations Completed', 'Notes', 'Application Date'];
     const csvContent = [
       headers.join(','),
       ...filteredApplicants.map(app => [
         app.fullName,
         app.email,
         app.phone,
+        app.age,
+        app.gender,
+        app.education,
         app.city,
         app.workingHours,
         app.weeklyAvailability,
+        app.reference,
         app.status,
         app.salesCompleted,
         app.notes || '',
@@ -213,7 +318,7 @@ const AdminDashboard = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `srm_applicants_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `srm_applicants_${referenceFilter !== 'All' ? referenceFilter + '_' : ''}${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
     
@@ -253,6 +358,10 @@ const AdminDashboard = () => {
   const totalRegistrations = applicants.reduce((sum, app) => sum + app.salesCompleted, 0);
   const targetAchieved = Math.min((totalRegistrations / (applicants.length * 4) * 100), 100);
   const uniqueCities = [...new Set(applicants.map(app => app.city))];
+  const referenceStats = references.map(ref => ({
+    name: ref.name,
+    count: applicants.filter(app => app.reference === ref.name).length
+  }));
 
   if (loading) {
     return (
@@ -292,378 +401,551 @@ const AdminDashboard = () => {
       </header>
 
       <div className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">Total Applicants This Month</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
-              </div>
-              <div className="text-3xl">👥</div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">Qualified Candidates</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
-              </div>
-              <div className="text-3xl">✅</div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">Total Registrations</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalRegistrations}</p>
-              </div>
-              <div className="text-3xl">📈</div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-600 text-sm font-medium mb-1">Target Achieved</p>
-                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
-              </div>
-              <div className="text-3xl">🎯</div>
-            </div>
-            <div className="mt-4 bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
-                style={{ width: `${targetAchieved}%` }}
-              ></div>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl mb-8 max-w-md">
+          <button
+            onClick={() => setActiveTab('applicants')}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+              activeTab === 'applicants'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Users className="w-4 h-4 inline mr-2" />
+            Applicants
+          </button>
+          <button
+            onClick={() => setActiveTab('references')}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+              activeTab === 'references'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Settings className="w-4 h-4 inline mr-2" />
+            References
+          </button>
         </div>
 
-        {/* Filters Section */}
-        <div className="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-gray-100 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="w-full lg:flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <input
-                    type="text"
-                    placeholder="Search applicants..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                  />
+        {activeTab === 'applicants' && (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium mb-1">Total Applicants This Month</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
+                  </div>
+                  <div className="text-3xl">👥</div>
                 </div>
+              </div>
 
-                {/* Status Filter */}
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                >
-                  <option value="All">All Status</option>
-                  <option value="New">New</option>
-                  <option value="Contacted">Contacted</option>
-                  <option value="In Review">In Review</option>
-                  <option value="Hired">Hired</option>
-                  <option value="Rejected">Rejected</option>
-                </select>
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium mb-1">Qualified Candidates</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
+                  </div>
+                  <div className="text-3xl">✅</div>
+                </div>
+              </div>
 
-                {/* City Filter */}
-                <select
-                  value={cityFilter}
-                  onChange={(e) => setCityFilter(e.target.value)}
-                  className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                >
-                  <option value="All">All Cities</option>
-                  {uniqueCities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
-                </select>
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium mb-1">Total Registrations</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalRegistrations}</p>
+                  </div>
+                  <div className="text-3xl">📈</div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-600 text-sm font-medium mb-1">Target Achieved</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
+                  </div>
+                  <div className="text-3xl">🎯</div>
+                </div>
+                <div className="mt-4 bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${targetAchieved}%` }}
+                  ></div>
+                </div>
               </div>
             </div>
 
-            {/* Results count */}
-            <div className="flex items-center text-gray-600 text-sm">
-              <Filter className="w-4 h-4 mr-2" />
-              <span>
-                {filteredApplicants.length} of {applicants.length} applicants
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Applicants Table/Cards */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-20">
-          {/* Desktop Table View */}
-          <div className="hidden lg:block overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicant</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registrations</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredApplicants.map((applicant) => (
-                  <tr key={applicant.id} className="hover:bg-gray-50 transition-colors duration-200">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-semibold text-gray-900">{applicant.fullName}</div>
-                        <div className="text-sm text-gray-600 flex items-center mt-1">
-                          <MapPin className="w-3 h-3 mr-1" />
-                          {applicant.city}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <Phone className="w-3 h-3 mr-2" />
-                          {applicant.phone}
-                        </div>
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Mail className="w-3 h-3 mr-2" />
-                          {applicant.email}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="text-sm font-medium text-gray-900">{applicant.workingHours}</div>
-                        <div className="text-xs text-gray-600">{applicant.weeklyAvailability}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {editingApplicant === applicant.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="number"
-                            value={editingSales}
-                            onChange={(e) => setEditingSales(Number(e.target.value))}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
-                            min="0"
-                          />
-                          <button
-                            onClick={() => updateSalesCount(applicant.id, editingSales)}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingApplicant(null)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
-                          <button
-                            onClick={() => {
-                              setEditingApplicant(applicant.id);
-                              setEditingSales(applicant.salesCompleted);
-                            }}
-                            className="text-gray-400 hover:text-gray-600"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <select
-                        value={applicant.status}
-                        onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-orange-500`}
-                      >
-                        <option value="New">New</option>
-                        <option value="Contacted">Contacted</option>
-                        <option value="In Review">In Review</option>
-                        <option value="Hired">Hired</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => setViewingApplicant(applicant)}
-                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
-                          title="View details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleCallClick(applicant.phone)}
-                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
-                          title="Call applicant"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
-                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
-                          title="WhatsApp message"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setShowDeleteConfirm(applicant.id)}
-                          className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
-                          title="Delete applicant"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="lg:hidden p-5">
-            <div className="space-y-4">
-              {filteredApplicants.map((applicant) => (
-                <div key={applicant.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 text-lg">{applicant.fullName}</h3>
-                      <p className="text-sm text-gray-600 flex items-center mt-1">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {applicant.city}
-                      </p>
+            {/* Filters Section */}
+            <div className="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-gray-100 mb-8">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div className="w-full lg:flex-1">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {/* Search */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="text"
+                        placeholder="Search applicants..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                      />
                     </div>
+
+                    {/* Status Filter */}
                     <select
-                      value={applicant.status}
-                      onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
-                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none`}
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     >
+                      <option value="All">All Status</option>
                       <option value="New">New</option>
                       <option value="Contacted">Contacted</option>
                       <option value="In Review">In Review</option>
                       <option value="Hired">Hired</option>
                       <option value="Rejected">Rejected</option>
                     </select>
-                  </div>
 
-                  <div className="grid grid-cols-1 gap-3 mb-4">
-                    <div className="flex items-center">
-                      <Phone className="w-4 h-4 mr-2 text-gray-500" />
-                      <span className="text-sm font-medium text-gray-900">{applicant.phone}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Mail className="w-4 h-4 mr-2 text-gray-500" />
-                      <span className="text-sm text-gray-600">{applicant.email}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2 text-gray-500" />
-                      <span className="text-sm text-gray-600">{applicant.workingHours} • {applicant.weeklyAvailability}</span>
-                    </div>
-                    <div className="flex items-center">
-                      <TrendingUp className="w-4 h-4 mr-2 text-gray-500" />
-                      <span className="text-sm text-gray-600">Registrations: </span>
-                      {editingApplicant === applicant.id ? (
-                        <div className="flex items-center space-x-2 ml-2">
-                          <input
-                            type="number"
-                            value={editingSales}
-                            onChange={(e) => setEditingSales(Number(e.target.value))}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
-                            min="0"
-                          />
-                          <button
-                            onClick={() => updateSalesCount(applicant.id, editingSales)}
-                            className="text-green-600"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingApplicant(null)}
-                            className="text-red-600"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2 ml-2">
-                          <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
-                          <button
-                            onClick={() => {
-                              setEditingApplicant(applicant.id);
-                              setEditingSales(applicant.salesCompleted);
-                            }}
-                            className="text-gray-400"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                    {/* City Filter */}
+                    <select
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                    >
+                      <option value="All">All Cities</option>
+                      {uniqueCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
 
-                  <div className="flex items-center space-x-2 pt-3 border-t border-gray-200">
-                    <button
-                      onClick={() => setViewingApplicant(applicant)}
-                      className="flex items-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-300 text-sm font-medium"
+                    {/* Reference Filter */}
+                    <select
+                      value={referenceFilter}
+                      onChange={(e) => setReferenceFilter(e.target.value)}
+                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                     >
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </button>
-                    <button
-                      onClick={() => handleCallClick(applicant.phone)}
-                      className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
-                    >
-                      <Phone className="w-4 h-4 mr-1" />
-                      Call
-                    </button>
-                    <button
-                      onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
-                      className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
-                    >
-                      <MessageCircle className="w-4 h-4 mr-1" />
-                      WhatsApp
-                    </button>
-                    <button
-                      onClick={() => setShowDeleteConfirm(applicant.id)}
-                      className="flex items-center px-2 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-300 text-sm font-medium"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                      <option value="All">All References</option>
+                      {references.map(ref => (
+                        <option key={ref.id} value={ref.name}>{ref.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Results count */}
+                <div className="flex items-center text-gray-600 text-sm">
+                  <Filter className="w-4 h-4 mr-2" />
+                  <span>
+                    {filteredApplicants.length} of {applicants.length} applicants
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Applicants Table/Cards */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-20">
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicant</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reference</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registrations</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {filteredApplicants.map((applicant) => (
+                      <tr key={applicant.id} className="hover:bg-gray-50 transition-colors duration-200">
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="font-semibold text-gray-900">{applicant.fullName}</div>
+                            <div className="text-sm text-gray-600 flex items-center mt-1">
+                              <MapPin className="w-3 h-3 mr-1" />
+                              {applicant.city}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {applicant.age} years, {applicant.gender}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-2">
+                            <div className="flex items-center text-sm text-gray-900">
+                              <Phone className="w-3 h-3 mr-2" />
+                              {applicant.phone}
+                            </div>
+                            <div className="flex items-center text-sm text-gray-600">
+                              <Mail className="w-3 h-3 mr-2" />
+                              {applicant.email}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="space-y-1">
+                            <div className="text-sm font-medium text-gray-900">{applicant.education}</div>
+                            <div className="text-xs text-gray-600">{applicant.workingHours}</div>
+                            <div className="text-xs text-gray-500">{applicant.weeklyAvailability}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <UserCheck className="w-3 h-3 mr-1 text-orange-500" />
+                            <span className="text-sm font-medium text-gray-900">{applicant.reference}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          {editingApplicant === applicant.id ? (
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="number"
+                                value={editingSales}
+                                onChange={(e) => setEditingSales(Number(e.target.value))}
+                                className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
+                                min="0"
+                              />
+                              <button
+                                onClick={() => updateSalesCount(applicant.id, editingSales)}
+                                className="text-green-600 hover:text-green-800"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingApplicant(null)}
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2">
+                              <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
+                              <button
+                                onClick={() => {
+                                  setEditingApplicant(applicant.id);
+                                  setEditingSales(applicant.salesCompleted);
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
+                          <select
+                            value={applicant.status}
+                            onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
+                            className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-orange-500`}
+                          >
+                            <option value="New">New</option>
+                            <option value="Contacted">Contacted</option>
+                            <option value="In Review">In Review</option>
+                            <option value="Hired">Hired</option>
+                            <option value="Rejected">Rejected</option>
+                          </select>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => setViewingApplicant(applicant)}
+                              className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleCallClick(applicant.phone)}
+                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
+                              title="Call applicant"
+                            >
+                              <Phone className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
+                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
+                              title="WhatsApp message"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => setShowDeleteConfirm(applicant.id)}
+                              className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
+                              title="Delete applicant"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden p-5">
+                <div className="space-y-4">
+                  {filteredApplicants.map((applicant) => (
+                    <div key={applicant.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-gray-900 text-lg">{applicant.fullName}</h3>
+                          <p className="text-sm text-gray-600 flex items-center mt-1">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {applicant.city} • {applicant.age} years, {applicant.gender}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            <UserCheck className="w-3 h-3 inline mr-1" />
+                            Ref: {applicant.reference}
+                          </p>
+                        </div>
+                        <select
+                          value={applicant.status}
+                          onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
+                          className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none`}
+                        >
+                          <option value="New">New</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="In Review">In Review</option>
+                          <option value="Hired">Hired</option>
+                          <option value="Rejected">Rejected</option>
+                        </select>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 mb-4">
+                        <div className="flex items-center">
+                          <Phone className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-900">{applicant.phone}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Mail className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm text-gray-600">{applicant.email}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <UserCheck className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm text-gray-600">{applicant.education}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm text-gray-600">{applicant.workingHours} • {applicant.weeklyAvailability}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <TrendingUp className="w-4 h-4 mr-2 text-gray-500" />
+                          <span className="text-sm text-gray-600">Registrations: </span>
+                          {editingApplicant === applicant.id ? (
+                            <div className="flex items-center space-x-2 ml-2">
+                              <input
+                                type="number"
+                                value={editingSales}
+                                onChange={(e) => setEditingSales(Number(e.target.value))}
+                                className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
+                                min="0"
+                              />
+                              <button
+                                onClick={() => updateSalesCount(applicant.id, editingSales)}
+                                className="text-green-600"
+                              >
+                                <CheckCircle className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingApplicant(null)}
+                                className="text-red-600"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center space-x-2 ml-2">
+                              <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
+                              <button
+                                onClick={() => {
+                                  setEditingApplicant(applicant.id);
+                                  setEditingSales(applicant.salesCompleted);
+                                }}
+                                className="text-gray-400"
+                              >
+                                <Edit2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2 pt-3 border-t border-gray-200">
+                        <button
+                          onClick={() => setViewingApplicant(applicant)}
+                          className="flex items-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-300 text-sm font-medium"
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleCallClick(applicant.phone)}
+                          className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
+                        >
+                          <Phone className="w-4 h-4 mr-1" />
+                          Call
+                        </button>
+                        <button
+                          onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
+                          className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
+                        >
+                          <MessageCircle className="w-4 h-4 mr-1" />
+                          WhatsApp
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteConfirm(applicant.id)}
+                          className="flex items-center px-2 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-300 text-sm font-medium"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {filteredApplicants.length === 0 && (
+                <div className="text-center py-12">
+                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">No applicants found matching your criteria</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'references' && (
+          <div className="space-y-8">
+            {/* Reference Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {referenceStats.map((stat) => (
+                <div key={stat.name} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">{stat.name}</h3>
+                      <p className="text-2xl font-bold text-orange-600">{stat.count}</p>
+                      <p className="text-sm text-gray-500">applicants</p>
+                    </div>
+                    <UserCheck className="w-8 h-8 text-orange-500" />
                   </div>
                 </div>
               ))}
             </div>
-          </div>
 
-          {filteredApplicants.length === 0 && (
-            <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No applicants found matching your criteria</p>
+            {/* Add New Reference */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Reference</h3>
+              <div className="flex space-x-3">
+                <input
+                  type="text"
+                  value={newReferenceName}
+                  onChange={(e) => setNewReferenceName(e.target.value)}
+                  placeholder="Enter reference name"
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                />
+                <button
+                  onClick={addReference}
+                  disabled={!newReferenceName.trim()}
+                  className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
+                >
+                  <Plus className="w-4 h-4 mr-2 inline" />
+                  Add
+                </button>
+              </div>
             </div>
-          )}
-        </div>
+
+            {/* References List */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Manage References</h3>
+              </div>
+              <div className="divide-y divide-gray-200">
+                {references.map((reference) => (
+                  <div key={reference.id} className="px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <UserCheck className="w-5 h-5 text-orange-500" />
+                      {editingReference === reference.id ? (
+                        <input
+                          type="text"
+                          value={editingReferenceName}
+                          onChange={(e) => setEditingReferenceName(e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:border-orange-500 outline-none"
+                        />
+                      ) : (
+                        <span className="font-medium text-gray-900">{reference.name}</span>
+                      )}
+                      <span className="text-sm text-gray-500">
+                        ({referenceStats.find(s => s.name === reference.name)?.count || 0} applicants)
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {editingReference === reference.id ? (
+                        <>
+                          <button
+                            onClick={() => updateReference(reference.id, editingReferenceName)}
+                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingReference(null);
+                              setEditingReferenceName('');
+                            }}
+                            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-all duration-300"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingReference(reference.id);
+                              setEditingReferenceName(reference.name);
+                            }}
+                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => deleteReference(reference.id)}
+                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Fixed Export Button */}
-      <div className="fixed bottom-5 right-5 z-50">
-        <button
-          onClick={exportToExcel}
-          className="premium-cta-button"
-        >
-          <Download className="w-5 h-5 mr-2" />
-          Export as Excel
-        </button>
-      </div>
+      {activeTab === 'applicants' && (
+        <div className="fixed bottom-5 right-5 z-50">
+          <button
+            onClick={exportToExcel}
+            className="premium-cta-button"
+          >
+            <Download className="w-5 h-5 mr-2" />
+            Export {referenceFilter !== 'All' ? referenceFilter : 'All'} Data
+          </button>
+        </div>
+      )}
 
       {/* Applicant Detail Modal */}
       {viewingApplicant && (
@@ -696,16 +978,29 @@ const AdminDashboard = () => {
                 </div>
               </div>
               
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Age</label>
+                  <p className="text-gray-900">{viewingApplicant.age} years</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
+                  <p className="text-gray-900">{viewingApplicant.gender}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Education</label>
+                  <p className="text-gray-900">{viewingApplicant.education}</p>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
                   <p className="text-gray-900">{viewingApplicant.city}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(viewingApplicant.status)}`}>
-                    {viewingApplicant.status}
-                  </span>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Reference</label>
+                  <p className="text-gray-900">{viewingApplicant.reference}</p>
                 </div>
               </div>
               
@@ -717,6 +1012,19 @@ const AdminDashboard = () => {
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Weekly Availability</label>
                   <p className="text-gray-900">{viewingApplicant.weeklyAvailability}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(viewingApplicant.status)}`}>
+                    {viewingApplicant.status}
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Registrations</label>
+                  <p className="text-gray-900 font-semibold">{viewingApplicant.salesCompleted}</p>
                 </div>
               </div>
               
@@ -806,7 +1114,7 @@ const AdminDashboard = () => {
       <footer className="bg-white border-t border-gray-200 mt-8">
         <div className="px-5 sm:px-6 lg:px-8 py-6">
           <div className="text-center text-sm text-gray-600">
-            ManaCLG © 2025. Built with ❤️
+            ManaCLG LevelUp © 2025. Built with ❤️
           </div>
         </div>
       </footer>

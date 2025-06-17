@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Calendar, GraduationCap, Clock, Users } from 'lucide-react';
+import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Calendar, GraduationCap, Clock, Users, UserCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const RegistrationForm = () => {
@@ -22,6 +22,26 @@ const RegistrationForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [references, setReferences] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetchReferences();
+  }, []);
+
+  const fetchReferences = async () => {
+    try {
+      const referencesSnapshot = await getDocs(collection(db, 'references'));
+      const referencesList = referencesSnapshot.docs.map(doc => doc.data().name);
+      
+      // Default references if none exist in Firestore
+      const defaultReferences = ['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN'];
+      setReferences(referencesList.length > 0 ? referencesList : defaultReferences);
+    } catch (error) {
+      console.error('Error fetching references:', error);
+      // Fallback to default references
+      setReferences(['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN']);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
@@ -53,7 +73,10 @@ const RegistrationForm = () => {
     if (!formData.city.trim()) newErrors.city = 'City is required';
     if (!formData.workingHours) newErrors.workingHours = 'Preferred working hours is required';
     if (!formData.weeklyAvailability) newErrors.weeklyAvailability = 'Weekly availability is required';
-    if (!formData.reference) newErrors.reference = 'Reference selection is required';
+    
+    if (!formData.reference) {
+      newErrors.reference = 'Reference selection is required';
+    }
     
     if (!formData.whyThisRole.trim()) {
       newErrors.whyThisRole = 'Please tell us why you want this role';
@@ -86,6 +109,16 @@ const RegistrationForm = () => {
         description: "Please fix the errors in the form",
         variant: "destructive"
       });
+      
+      // Shake animation for error fields
+      Object.keys(errors).forEach(fieldName => {
+        const field = document.getElementById(fieldName);
+        if (field) {
+          field.classList.add('animate-pulse');
+          setTimeout(() => field.classList.remove('animate-pulse'), 600);
+        }
+      });
+      
       return;
     }
 
@@ -388,11 +421,11 @@ const RegistrationForm = () => {
                     }`}
                   >
                     <option value="">Select qualification</option>
-                    <option value="10th">10th Pass</option>
-                    <option value="12th">12th Pass</option>
+                    <option value="10th Pass">10th Pass</option>
+                    <option value="12th Pass">12th Pass</option>
                     <option value="Diploma">Diploma</option>
                     <option value="Graduate">Graduate</option>
-                    <option value="PG">Post Graduate</option>
+                    <option value="Post Graduate">Post Graduate</option>
                   </select>
                   {errors.education && (
                     <p className="text-red-500 text-sm flex items-center gap-1">
@@ -443,9 +476,9 @@ const RegistrationForm = () => {
                     }`}
                   >
                     <option value="">Select your preferred time</option>
-                    <option value="Morning">Morning (9 AM - 1 PM)</option>
-                    <option value="Afternoon">Afternoon (1 PM - 5 PM)</option>
-                    <option value="Evening">Evening (5 PM - 9 PM)</option>
+                    <option value="Morning (9 AM - 1 PM)">Morning (9 AM - 1 PM)</option>
+                    <option value="Afternoon (1 PM - 5 PM)">Afternoon (1 PM - 5 PM)</option>
+                    <option value="Evening (5 PM - 9 PM)">Evening (5 PM - 9 PM)</option>
                   </select>
                   {errors.workingHours && (
                     <p className="text-red-500 text-sm flex items-center gap-1">
@@ -471,9 +504,9 @@ const RegistrationForm = () => {
                     }`}
                   >
                     <option value="">Select your availability</option>
-                    <option value="12 hrs">12 hours/week</option>
-                    <option value="20 hrs">20 hours/week</option>
-                    <option value="30 hrs">30 hours/week</option>
+                    <option value="12 hours/week">12 hours/week</option>
+                    <option value="20 hours/week">20 hours/week</option>
+                    <option value="30 hours/week">30 hours/week</option>
                   </select>
                   {errors.weeklyAvailability && (
                     <p className="text-red-500 text-sm flex items-center gap-1">
@@ -486,7 +519,7 @@ const RegistrationForm = () => {
                 {/* Reference */}
                 <div className="space-y-3">
                   <label htmlFor="reference" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
-                    <Users className="w-4 h-4 mr-2 text-orange-500" />
+                    <UserCheck className="w-4 h-4 mr-2 text-orange-500" />
                     Reference *
                   </label>
                   <select
@@ -499,12 +532,9 @@ const RegistrationForm = () => {
                     }`}
                   >
                     <option value="">Select reference</option>
-                    <option value="Govardhan">Govardhan</option>
-                    <option value="Srinu">Srinu</option>
-                    <option value="Anand">Anand</option>
-                    <option value="Mario">Mario</option>
-                    <option value="Pradeep">Pradeep</option>
-                    <option value="ETHAN">ETHAN</option>
+                    {references.map((ref) => (
+                      <option key={ref} value={ref}>{ref}</option>
+                    ))}
                   </select>
                   {errors.reference && (
                     <p className="text-red-500 text-sm flex items-center gap-1">
