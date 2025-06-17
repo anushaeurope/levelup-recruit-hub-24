@@ -166,8 +166,8 @@ const AdminDashboard = () => {
   const thisWeek = Math.ceil(new Date().getDate() / 7);
 
   const monthlyApplicants = applicants.filter(app => {
-    const date = app.submittedAt?.toDate ? app.submittedAt.toDate() : new Date(app.submittedAt);
-    return date.getMonth() === thisMonth && date.getFullYear() === thisYear;
+    const date = app.submittedAt?.toDate();
+    return date && date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   }).length;
 
   const weeklyRegistrations = applicants.filter(app => app.salesCompleted > 0).length;
@@ -402,10 +402,7 @@ const AdminDashboard = () => {
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(applicant.status)}
                         <span className="text-xs text-gray-400">
-                          {applicant.submittedAt?.toDate ? 
-                            applicant.submittedAt.toDate().toLocaleDateString() : 
-                            new Date(applicant.submittedAt).toLocaleDateString()
-                          }
+                          {applicant.submittedAt?.toDate().toLocaleDateString()}
                         </span>
                       </div>
                     </td>
