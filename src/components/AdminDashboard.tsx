@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, addDoc, setDoc } from 'firebase/firestore';
-import { signOut } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus, Settings, UserCheck, Briefcase } from 'lucide-react';
+import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus, Settings, UserCheck, Briefcase, UserPlus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Applicant {
@@ -19,6 +19,8 @@ interface Applicant {
   weeklyAvailability: string;
   whyThisRole: string;
   reference: string;
+  referenceId?: string;
+  referenceName?: string;
   status: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review';
   salesCompleted: number;
   notes?: string;
@@ -28,6 +30,11 @@ interface Applicant {
 interface Reference {
   id: string;
   name: string;
+  email: string;
+  phone: string;
+  createdAt?: Timestamp;
+  createdBy?: string;
+  type: string;
 }
 
 const AdminDashboard = () => {
@@ -48,6 +55,14 @@ const AdminDashboard = () => {
   const [newReferenceName, setNewReferenceName] = useState('');
   const [editingReference, setEditingReference] = useState<string | null>(null);
   const [editingReferenceName, setEditingReferenceName] = useState('');
+  const [showCreateReference, setShowCreateReference] = useState(false);
+  const [newReferenceData, setNewReferenceData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
+  const [creatingReference, setCreatingReference] = useState(false);
 
   useEffect(() => {
     fetchApplicants();
@@ -85,19 +100,15 @@ const AdminDashboard = () => {
       const querySnapshot = await getDocs(collection(db, 'references'));
       const referencesData = querySnapshot.docs.map(doc => ({
         id: doc.id,
-        name: doc.data().name
+        name: doc.data().name,
+        email: doc.data().email,
+        phone: doc.data().phone,
+        createdAt: doc.data().createdAt,
+        createdBy: doc.data().createdBy,
+        type: doc.data().type
       })) as Reference[];
       
-      // If no references exist, create default ones
-      if (referencesData.length === 0) {
-        const defaultReferences = ['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN'];
-        for (const refName of defaultReferences) {
-          await addDoc(collection(db, 'references'), { name: refName });
-        }
-        fetchReferences(); // Refetch after creating defaults
-      } else {
-        setReferences(referencesData);
-      }
+      setReferences(referencesData.filter(ref => ref.type === 'reference'));
     } catch (error) {
       console.error('Error fetching references:', error);
     }
@@ -124,7 +135,7 @@ const AdminDashboard = () => {
     }
 
     if (referenceFilter !== 'All') {
-      filtered = filtered.filter(applicant => applicant.reference === referenceFilter);
+      filtered = filtered.filter(applicant => applicant.referenceId === referenceFilter);
     }
 
     setFilteredApplicants(filtered);
@@ -134,7 +145,7 @@ const AdminDashboard = () => {
     if (!newReferenceName.trim()) return;
     
     try {
-      await addDoc(collection(db, 'references'), { name: newReferenceName.trim() });
+      await addDoc(collection(db, 'references'), { name: newReferenceName.trim(), type: 'reference' });
       setNewReferenceName('');
       fetchReferences();
       toast({
@@ -362,7 +373,7 @@ const AdminDashboard = () => {
   const uniqueCities = [...new Set(applicants.map(app => app.city))];
   const referenceStats = references.map(ref => ({
     name: ref.name,
-    count: applicants.filter(app => app.reference === ref.name).length
+    count: applicants.filter(app => app.referenceId === ref.id || app.reference === ref.name).length
   }));
 
   if (loading) {
@@ -531,7 +542,7 @@ const AdminDashboard = () => {
                     >
                       <option value="All">All References</option>
                       {references.map(ref => (
-                        <option key={ref.id} value={ref.name}>{ref.name}</option>
+                        <option key={ref.id} value={ref.id}>{ref.name}</option>
                       ))}
                     </select>
                   </div>
@@ -854,6 +865,89 @@ const AdminDashboard = () => {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Create Reference Login */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <UserPlus className="w-5 h-5 mr-2 text-orange-500" />
+                  Create Reference Login
+                </h3>
+                <button
+                  onClick={() => setShowCreateReference(!showCreateReference)}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-medium text-sm"
+                >
+                  {showCreateReference ? 'Cancel' : 'New Reference'}
+                </button>
+              </div>
+
+              {showCreateReference && (
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                      <input
+                        type="text"
+                        value={newReferenceData.name}
+                        onChange={(e) => setNewReferenceData({ ...newReferenceData, name: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                        placeholder="Enter full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                      <input
+                        type="email"
+                        value={newReferenceData.email}
+                        onChange={(e) => setNewReferenceData({ ...newReferenceData, email: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                        placeholder="Enter email address"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone *</label>
+                      <input
+                        type="tel"
+                        value={newReferenceData.phone}
+                        onChange={(e) => setNewReferenceData({ ...newReferenceData, phone: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                        placeholder="Enter phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                      <input
+                        type="password"
+                        value={newReferenceData.password}
+                        onChange={(e) => setNewReferenceData({ ...newReferenceData, password: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
+                        placeholder="Minimum 6 characters"
+                        minLength={6}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      onClick={createReference}
+                      disabled={creatingReference}
+                      className="px-6 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium flex items-center"
+                    >
+                      {creatingReference ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 mr-2" />
+                          Create Reference Login
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Add New Reference */}
