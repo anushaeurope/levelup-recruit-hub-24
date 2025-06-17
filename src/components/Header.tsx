@@ -19,15 +19,14 @@ const Header = () => {
 
   const navLinks = [
     { label: 'Home', id: 'top' },
-    { label: 'About', id: 'about-us' },
-    { label: 'Apply Now', id: 'registration-form' },
-    { label: 'Contact', id: 'footer' }
+    { label: 'About Us', id: 'about-us' },
+    { label: 'Apply Now', id: 'registration-form' }
   ];
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-black shadow-lg border-b border-black">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+      <header className="sticky top-0 z-50 bg-black shadow-lg transition-all duration-300">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
             <img 
@@ -43,9 +42,10 @@ const Header = () => {
               <button
                 key={link.id}
                 onClick={() => scrollToSection(link.id)}
-                className="text-white font-semibold tracking-wide hover:text-orange-400 transition-colors duration-300 text-sm uppercase"
+                className="text-white font-montserrat font-medium tracking-wide relative group transition-all duration-300 hover:text-orange-400"
               >
                 {link.label}
+                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-orange-400 transition-all duration-300 group-hover:w-full"></span>
               </button>
             ))}
           </nav>
@@ -64,21 +64,21 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Drawer */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
           <div 
             className="absolute inset-0 bg-black bg-opacity-50"
             onClick={() => setIsMobileMenuOpen(false)}
           />
-          <div className="absolute right-0 top-0 h-full w-64 bg-black shadow-xl transform transition-transform duration-300 ease-in-out">
+          <div className="absolute right-0 top-0 h-full w-80 bg-black shadow-xl transform transition-transform duration-300 ease-in-out animate-slide-in-right">
             <div className="pt-20 px-6">
               <nav className="space-y-6">
                 {navLinks.map((link) => (
                   <button
                     key={link.id}
                     onClick={() => scrollToSection(link.id)}
-                    className="block w-full text-left text-white font-semibold text-lg tracking-wide hover:text-orange-400 transition-colors duration-300 py-3 border-b border-gray-800"
+                    className="block w-full text-left text-white font-montserrat font-medium text-lg tracking-wide hover:text-orange-400 transition-colors duration-300 py-4 border-b border-gray-800"
                   >
                     {link.label}
                   </button>
