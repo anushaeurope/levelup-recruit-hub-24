@@ -9,10 +9,10 @@ import Footer from '../components/Footer';
 const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
+      <RegistrationForm />
       <Hero />
       <RoleOverview />
       <MotivationalQuotes />
-      <RegistrationForm />
       <Footer />
     </div>
   );

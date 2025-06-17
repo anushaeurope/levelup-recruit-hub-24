@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin } from 'lucide-react';
+import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin, Calendar, GraduationCap, Clock, Users } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const RegistrationForm = () => {
@@ -10,10 +10,14 @@ const RegistrationForm = () => {
     fullName: '',
     email: '',
     phone: '',
+    age: '',
+    gender: '',
+    education: '',
     city: '',
     workingHours: '',
     weeklyAvailability: '',
-    whyThisRole: ''
+    whyThisRole: '',
+    reference: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -38,9 +42,18 @@ const RegistrationForm = () => {
       newErrors.phone = 'Please enter a valid 10-digit phone number';
     }
 
+    if (!formData.age.trim()) {
+      newErrors.age = 'Age is required';
+    } else if (isNaN(Number(formData.age)) || Number(formData.age) < 18 || Number(formData.age) > 65) {
+      newErrors.age = 'Please enter a valid age between 18 and 65';
+    }
+
+    if (!formData.gender) newErrors.gender = 'Gender is required';
+    if (!formData.education) newErrors.education = 'Education qualification is required';
     if (!formData.city.trim()) newErrors.city = 'City is required';
     if (!formData.workingHours) newErrors.workingHours = 'Preferred working hours is required';
     if (!formData.weeklyAvailability) newErrors.weeklyAvailability = 'Weekly availability is required';
+    if (!formData.reference) newErrors.reference = 'Reference selection is required';
     
     if (!formData.whyThisRole.trim()) {
       newErrors.whyThisRole = 'Please tell us why you want this role';
@@ -125,10 +138,14 @@ const RegistrationForm = () => {
         fullName: '',
         email: '',
         phone: '',
+        age: '',
+        gender: '',
+        education: '',
         city: '',
         workingHours: '',
         weeklyAvailability: '',
-        whyThisRole: ''
+        whyThisRole: '',
+        reference: ''
       });
 
     } catch (error) {
@@ -162,20 +179,24 @@ const RegistrationForm = () => {
     return formData.fullName.trim() &&
            formData.email.trim() &&
            formData.phone.trim() &&
+           formData.age.trim() &&
+           formData.gender &&
+           formData.education &&
            formData.city.trim() &&
            formData.workingHours &&
            formData.weeklyAvailability &&
+           formData.reference &&
            formData.whyThisRole.trim().length >= 20;
   };
 
   if (showSuccess) {
     return (
-      <section id="registration-form" className="py-20 bg-gradient-to-r from-green-50 to-emerald-50">
+      <section id="registration-form" className="py-16 bg-gradient-to-r from-green-50 to-emerald-50">
         <div className="container mx-auto px-6">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="professional-card p-12 animate-fade-in-up">
+            <div className="professional-card p-12 animate-fade-in-up bg-white shadow-xl rounded-2xl">
               <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
-              <h2 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted Successfully!</h2>
+              <h2 className="text-3xl font-bold text-gray-900 mb-4 font-montserrat">Application Submitted Successfully!</h2>
               <p className="text-gray-600 text-lg mb-8">
                 Thanks for registering! Our team will reach you within 24 hours via WhatsApp.
               </p>
@@ -193,25 +214,30 @@ const RegistrationForm = () => {
   }
 
   return (
-    <section id="registration-form" className="py-20 bg-gray-50">
+    <section id="registration-form" className="py-20 bg-gradient-to-br from-gray-50 via-white to-blue-50">
       <div className="container mx-auto px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 animate-fade-in-up">
-              Apply to Become an SRM
-            </h2>
-            <p className="text-xl text-gray-600 animate-fade-in-up-delay">
-              Join our team of Student Relationship Managers and start your professional journey
-            </p>
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center px-6 py-3 bg-orange-50 border border-orange-200 rounded-full mb-6 animate-fade-in-up">
+            <span className="text-orange-700 font-semibold font-montserrat">ManaCLG LevelUp • SRM Registration</span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-4 animate-fade-in-up font-montserrat">
+            Apply to Become an SRM
+          </h1>
+          <p className="text-lg text-gray-600 animate-fade-in-up-delay max-w-2xl mx-auto">
+            Start your professional journey as a Student Relationship Manager. Fill out the form below to apply.
+          </p>
+        </div>
 
-          <div className="professional-card p-8 md:p-12">
+        {/* Floating Card Form */}
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 border border-gray-100 animate-fade-in-up-delay">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Full Name */}
-                <div className="space-y-2">
-                  <label htmlFor="fullName" className="flex items-center text-sm font-semibold text-gray-700">
-                    <User className="w-4 h-4 mr-2" />
+                <div className="space-y-3">
+                  <label htmlFor="fullName" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <User className="w-4 h-4 mr-2 text-orange-500" />
                     Full Name *
                   </label>
                   <input
@@ -234,9 +260,9 @@ const RegistrationForm = () => {
                 </div>
 
                 {/* Email */}
-                <div className="space-y-2">
-                  <label htmlFor="email" className="flex items-center text-sm font-semibold text-gray-700">
-                    <Mail className="w-4 h-4 mr-2" />
+                <div className="space-y-3">
+                  <label htmlFor="email" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Mail className="w-4 h-4 mr-2 text-orange-500" />
                     Email Address *
                   </label>
                   <input
@@ -259,9 +285,9 @@ const RegistrationForm = () => {
                 </div>
 
                 {/* Phone */}
-                <div className="space-y-2">
-                  <label htmlFor="phone" className="flex items-center text-sm font-semibold text-gray-700">
-                    <Phone className="w-4 h-4 mr-2" />
+                <div className="space-y-3">
+                  <label htmlFor="phone" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Phone className="w-4 h-4 mr-2 text-orange-500" />
                     Phone Number *
                   </label>
                   <input
@@ -291,10 +317,95 @@ const RegistrationForm = () => {
                   <p className="text-gray-500 text-xs">WhatsApp number preferred for quick communication</p>
                 </div>
 
+                {/* Age */}
+                <div className="space-y-3">
+                  <label htmlFor="age" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Calendar className="w-4 h-4 mr-2 text-orange-500" />
+                    Age *
+                  </label>
+                  <input
+                    type="number"
+                    id="age"
+                    name="age"
+                    value={formData.age}
+                    onChange={handleChange}
+                    className={`premium-input ${
+                      errors.age ? 'border-red-300 bg-red-50' : ''
+                    }`}
+                    placeholder="Enter your age"
+                    min="18"
+                    max="65"
+                  />
+                  {errors.age && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.age}
+                    </p>
+                  )}
+                </div>
+
+                {/* Gender */}
+                <div className="space-y-3">
+                  <label htmlFor="gender" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Users className="w-4 h-4 mr-2 text-orange-500" />
+                    Gender *
+                  </label>
+                  <select
+                    id="gender"
+                    name="gender"
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className={`premium-input ${
+                      errors.gender ? 'border-red-300 bg-red-50' : ''
+                    }`}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {errors.gender && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.gender}
+                    </p>
+                  )}
+                </div>
+
+                {/* Education */}
+                <div className="space-y-3">
+                  <label htmlFor="education" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <GraduationCap className="w-4 h-4 mr-2 text-orange-500" />
+                    Education Qualification *
+                  </label>
+                  <select
+                    id="education"
+                    name="education"
+                    value={formData.education}
+                    onChange={handleChange}
+                    className={`premium-input ${
+                      errors.education ? 'border-red-300 bg-red-50' : ''
+                    }`}
+                  >
+                    <option value="">Select qualification</option>
+                    <option value="10th">10th Pass</option>
+                    <option value="12th">12th Pass</option>
+                    <option value="Diploma">Diploma</option>
+                    <option value="Graduate">Graduate</option>
+                    <option value="PG">Post Graduate</option>
+                  </select>
+                  {errors.education && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.education}
+                    </p>
+                  )}
+                </div>
+
                 {/* City */}
-                <div className="space-y-2">
-                  <label htmlFor="city" className="flex items-center text-sm font-semibold text-gray-700">
-                    <MapPin className="w-4 h-4 mr-2" />
+                <div className="space-y-3">
+                  <label htmlFor="city" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <MapPin className="w-4 h-4 mr-2 text-orange-500" />
                     City *
                   </label>
                   <input
@@ -317,8 +428,9 @@ const RegistrationForm = () => {
                 </div>
 
                 {/* Working Hours */}
-                <div className="space-y-2">
-                  <label htmlFor="workingHours" className="block text-sm font-semibold text-gray-700">
+                <div className="space-y-3">
+                  <label htmlFor="workingHours" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Clock className="w-4 h-4 mr-2 text-orange-500" />
                     Preferred Work Hours *
                   </label>
                   <select
@@ -344,8 +456,9 @@ const RegistrationForm = () => {
                 </div>
 
                 {/* Weekly Availability */}
-                <div className="space-y-2">
-                  <label htmlFor="weeklyAvailability" className="block text-sm font-semibold text-gray-700">
+                <div className="space-y-3">
+                  <label htmlFor="weeklyAvailability" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Clock className="w-4 h-4 mr-2 text-orange-500" />
                     Weekly Availability *
                   </label>
                   <select
@@ -369,12 +482,43 @@ const RegistrationForm = () => {
                     </p>
                   )}
                 </div>
+
+                {/* Reference */}
+                <div className="space-y-3">
+                  <label htmlFor="reference" className="flex items-center text-sm font-bold text-gray-700 font-montserrat">
+                    <Users className="w-4 h-4 mr-2 text-orange-500" />
+                    Reference *
+                  </label>
+                  <select
+                    id="reference"
+                    name="reference"
+                    value={formData.reference}
+                    onChange={handleChange}
+                    className={`premium-input ${
+                      errors.reference ? 'border-red-300 bg-red-50' : ''
+                    }`}
+                  >
+                    <option value="">Select reference</option>
+                    <option value="Govardhan">Govardhan</option>
+                    <option value="Srinu">Srinu</option>
+                    <option value="Anand">Anand</option>
+                    <option value="Mario">Mario</option>
+                    <option value="Pradeep">Pradeep</option>
+                    <option value="ETHAN">ETHAN</option>
+                  </select>
+                  {errors.reference && (
+                    <p className="text-red-500 text-sm flex items-center gap-1">
+                      <AlertCircle className="w-4 h-4" />
+                      {errors.reference}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Why This Role */}
-              <div className="space-y-2">
-                <label htmlFor="whyThisRole" className="block text-sm font-semibold text-gray-700">
-                  Why are you applying? *
+              <div className="space-y-3">
+                <label htmlFor="whyThisRole" className="block text-sm font-bold text-gray-700 font-montserrat">
+                  Why are you applying for this role? *
                 </label>
                 <textarea
                   id="whyThisRole"
@@ -394,7 +538,7 @@ const RegistrationForm = () => {
                       {errors.whyThisRole}
                     </p>
                   )}
-                  <p className={`text-xs ml-auto ${
+                  <p className={`text-xs ml-auto font-montserrat ${
                     formData.whyThisRole.length < 20 ? 'text-red-500' : 'text-gray-500'
                   }`}>
                     {formData.whyThisRole.length}/20 characters minimum
@@ -407,7 +551,7 @@ const RegistrationForm = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting || !isFormValid()}
-                  className="w-full premium-submit-button disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full premium-submit-button disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 font-montserrat"
                 >
                   {isSubmitting ? (
                     <>

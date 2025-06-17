@@ -3,12 +3,6 @@ import React from 'react';
 import { ArrowDown, Star, Award, Users } from 'lucide-react';
 
 const Hero = () => {
-  const scrollToForm = () => {
-    document.getElementById('registration-form')?.scrollIntoView({ 
-      behavior: 'smooth' 
-    });
-  };
-
   return (
     <section className="relative min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 via-white to-blue-50">
       {/* Decorative elements */}
@@ -59,18 +53,12 @@ const Hero = () => {
             </div>
           </div>
 
-          {/* Updated premium CTA Button */}
-          <button
-            onClick={scrollToForm}
-            className="group relative premium-cta-button text-xl animate-fade-in-up-delay"
-          >
-            <span className="mr-3">APPLY NOW</span>
-            <ArrowDown className="w-5 h-5 group-hover:translate-y-1 transition-transform duration-300" />
-          </button>
-
-          {/* Scroll indicator */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-            <ArrowDown className="text-gray-400 w-6 h-6" />
+          {/* Remote Job Banner */}
+          <div className="bg-gradient-to-r from-orange-50 to-blue-50 rounded-2xl p-8 mb-8 animate-fade-in-up-delay">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">🏠 Remote Work Opportunity</h3>
+            <p className="text-lg text-gray-600">
+              Work from the comfort of your home while building meaningful relationships with students across India.
+            </p>
           </div>
         </div>
       </div>
