@@ -16,7 +16,8 @@ interface Application {
   status: string;
   registrationCompleted: boolean;
   createdAt: any;
-  reference?: string;
+  referenceId?: string;
+  referenceName?: string;
 }
 
 interface ReferenceData {
@@ -35,8 +36,13 @@ const ReferenceDashboard = () => {
 
   useEffect(() => {
     fetchReferenceData();
-    fetchApplications();
   }, []);
+
+  useEffect(() => {
+    if (referenceData) {
+      fetchApplications();
+    }
+  }, [referenceData]);
 
   const fetchReferenceData = async () => {
     try {
@@ -55,20 +61,36 @@ const ReferenceDashboard = () => {
   const fetchApplications = async () => {
     try {
       const user = auth.currentUser;
-      if (user && referenceData) {
+      if (user) {
+        // Query applications where referenceId matches current user's UID
         const q = query(
-          collection(db, 'applications'),
-          where('reference', '==', referenceData.name)
+          collection(db, 'applicants'),
+          where('referenceId', '==', user.uid)
         );
         const querySnapshot = await getDocs(q);
         const apps: Application[] = [];
         querySnapshot.forEach((doc) => {
           apps.push({ id: doc.id, ...doc.data() } as Application);
         });
+        
+        // Sort by creation date (newest first)
+        apps.sort((a, b) => {
+          if (a.createdAt && b.createdAt) {
+            return b.createdAt.toDate() - a.createdAt.toDate();
+          }
+          return 0;
+        });
+        
         setApplications(apps);
+        console.log(`Fetched ${apps.length} applications for reference ${user.uid}`);
       }
     } catch (error) {
       console.error('Error fetching applications:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load applications. Please refresh the page.",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -104,9 +126,9 @@ const ReferenceDashboard = () => {
         app.email,
         app.phone,
         app.city,
-        app.status,
+        app.status || 'New',
         app.registrationCompleted ? 'Yes' : 'No',
-        new Date(app.createdAt?.toDate()).toLocaleDateString()
+        app.createdAt ? new Date(app.createdAt.toDate()).toLocaleDateString() : 'N/A'
       ].join(','))
     ].join('\n');
 
@@ -122,13 +144,14 @@ const ReferenceDashboard = () => {
   const filteredApplications = applications.filter(app => {
     const matchesSearch = app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          app.phone.includes(searchTerm);
-    const matchesStatus = statusFilter === 'All' || app.status === statusFilter;
+    const matchesStatus = statusFilter === 'All' || (app.status || 'New') === statusFilter;
     const matchesCity = cityFilter === 'All' || app.city === cityFilter;
     return matchesSearch && matchesStatus && matchesCity;
   });
 
   const thisMonthApplications = applications.filter(app => {
-    const appDate = new Date(app.createdAt?.toDate());
+    if (!app.createdAt) return false;
+    const appDate = new Date(app.createdAt.toDate());
     const now = new Date();
     return appDate.getMonth() === now.getMonth() && appDate.getFullYear() === now.getFullYear();
   });
@@ -137,7 +160,7 @@ const ReferenceDashboard = () => {
   const completedRegistrations = applications.filter(app => app.registrationCompleted);
   const targetAchieved = referenceData?.target ? (completedRegistrations.length / referenceData.target * 100) : 0;
 
-  const uniqueCities = [...new Set(applications.map(app => app.city))];
+  const uniqueCities = [...new Set(applications.map(app => app.city).filter(Boolean))];
 
   if (loading) {
     return (
@@ -227,134 +250,150 @@ const ReferenceDashboard = () => {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border mb-6">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by name or phone..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                />
+        {applications.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+            <div className="flex flex-col items-center">
+              <Users className="w-16 h-16 text-gray-300 mb-4" />
+              <h3 className="text-xl font-semibold text-gray-600 mb-2">No Applications Found Yet</h3>
+              <p className="text-gray-500 max-w-md">
+                You haven't received any applications yet. Once candidates apply through your reference, they will appear here.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Filters */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border mb-6">
+              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-4 flex-1">
+                  <div className="relative">
+                    <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search by name or phone..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="All">All Status</option>
+                    <option value="New">New</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Qualified">Qualified</option>
+                    <option value="Hired">Hired</option>
+                  </select>
+
+                  {uniqueCities.length > 0 && (
+                    <select
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    >
+                      <option value="All">All Cities</option>
+                      {uniqueCities.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <button
+                  onClick={exportToExcel}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Export Excel</span>
+                </button>
               </div>
-
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option value="All">All Status</option>
-                <option value="New">New</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Qualified">Qualified</option>
-                <option value="Hired">Hired</option>
-              </select>
-
-              <select
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              >
-                <option value="All">All Cities</option>
-                {uniqueCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
             </div>
 
-            <button
-              onClick={exportToExcel}
-              className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Export Excel</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Applications Table */}
-        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Applicant</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Registration</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredApplications.map((app) => (
-                  <TableRow key={app.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-gray-900">{app.fullName}</p>
-                        <p className="text-sm text-gray-600">{app.email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{app.phone}</p>
-                    </TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
-                        {app.city}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                        app.status === 'Qualified' ? 'bg-green-100 text-green-800' :
-                        app.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {app.status}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      {app.registrationCompleted ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      ) : (
-                        <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <a
-                          href={getWhatsAppLink(app.phone, app.fullName)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                          title="WhatsApp"
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                        </a>
-                        <a
-                          href={getCallLink(app.phone)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                          title="Call"
-                        >
-                          <Phone className="w-4 h-4" />
-                        </a>
-                        <button
-                          className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="View Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
+            {/* Applications Table */}
+            <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Applicant</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>City</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Registration</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredApplications.map((app) => (
+                      <TableRow key={app.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-gray-900">{app.fullName}</p>
+                            <p className="text-sm text-gray-600">{app.email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-medium">{app.phone}</p>
+                        </TableCell>
+                        <TableCell>
+                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
+                            {app.city}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
+                            (app.status || 'New') === 'Qualified' ? 'bg-green-100 text-green-800' :
+                            (app.status || 'New') === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {app.status || 'New'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {app.registrationCompleted ? (
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <a
+                              href={getWhatsAppLink(app.phone, app.fullName)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                              title="WhatsApp"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                            </a>
+                            <a
+                              href={getCallLink(app.phone)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Call"
+                            >
+                              <Phone className="w-4 h-4" />
+                            </a>
+                            <button
+                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

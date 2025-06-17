@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { collection, addDoc, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -31,10 +32,15 @@ const RegistrationForm = () => {
     referenceId: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
 
   useEffect(() => {
     fetchReferences();
   }, []);
+
+  useEffect(() => {
+    validateForm();
+  }, [formData]);
 
   const fetchReferences = async () => {
     try {
@@ -57,6 +63,21 @@ const RegistrationForm = () => {
     }
   };
 
+  const validateForm = () => {
+    const requiredFields = [
+      'fullName', 'email', 'phone', 'age', 'gender', 'education', 
+      'city', 'currentPosition', 'workingHours', 'weeklyAvailability', 
+      'whyThisRole', 'reference'
+    ];
+    
+    const isValid = requiredFields.every(field => {
+      const value = formData[field as keyof typeof formData];
+      return value && value.trim() !== '';
+    });
+    
+    setIsFormValid(isValid);
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -77,10 +98,10 @@ const RegistrationForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.reference) {
+    if (!isFormValid) {
       toast({
-        title: "Reference Required",
-        description: "Please select a reference to proceed.",
+        title: "Form Incomplete",
+        description: "Please fill in all required fields.",
         variant: "destructive"
       });
       return;
@@ -97,6 +118,8 @@ const RegistrationForm = () => {
         referenceName: formData.reference,
         status: 'New',
         salesCompleted: 0,
+        registrationCompleted: false,
+        createdAt: Timestamp.now(),
         submittedAt: Timestamp.now()
       });
 
@@ -132,6 +155,18 @@ const RegistrationForm = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Generate working hours options from 9:00 AM to 9:00 PM
+  const generateWorkingHours = () => {
+    const hours = [];
+    for (let i = 9; i <= 21; i++) {
+      const hour12 = i > 12 ? i - 12 : i;
+      const ampm = i >= 12 ? 'PM' : 'AM';
+      const displayHour = hour12 === 0 ? 12 : hour12;
+      hours.push(`${displayHour}:00 ${ampm}`);
+    }
+    return hours;
   };
 
   return (
@@ -275,27 +310,33 @@ const RegistrationForm = () => {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                   >
                     <option value="">Select Education Level</option>
-                    <option value="High School">High School</option>
+                    <option value="10 Pass">10 Pass</option>
+                    <option value="12 Pass">12 Pass</option>
                     <option value="Bachelor's Degree">Bachelor's Degree</option>
                     <option value="Master's Degree">Master's Degree</option>
-                    <option value="PhD">PhD</option>
-                    <option value="Other">Other</option>
+                    <option value="Ph.D.">Ph.D.</option>
                   </select>
                 </div>
 
                 <div>
                   <label htmlFor="currentPosition" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Current Position (Optional)
+                    Current Position *
                   </label>
-                  <input
-                    type="text"
+                  <select
                     id="currentPosition"
                     name="currentPosition"
                     value={formData.currentPosition}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    placeholder="e.g., Sales Associate, Student, etc."
-                  />
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                  >
+                    <option value="">Select Current Position</option>
+                    <option value="Employed">Employed</option>
+                    <option value="Unemployed">Unemployed</option>
+                    <option value="Student">Student</option>
+                    <option value="Self Employed">Self Employed</option>
+                    <option value="Other">Other</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -319,11 +360,10 @@ const RegistrationForm = () => {
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                   >
-                    <option value="">Select Working Hours</option>
-                    <option value="Morning (9 AM - 1 PM)">Morning (9 AM - 1 PM)</option>
-                    <option value="Afternoon (1 PM - 6 PM)">Afternoon (1 PM - 6 PM)</option>
-                    <option value="Evening (6 PM - 10 PM)">Evening (6 PM - 10 PM)</option>
-                    <option value="Flexible">Flexible</option>
+                    <option value="">Select preferred working hour</option>
+                    {generateWorkingHours().map((hour) => (
+                      <option key={hour} value={hour}>{hour}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -411,8 +451,12 @@ const RegistrationForm = () => {
             <div>
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-semibold flex items-center justify-center"
+                disabled={isSubmitting || !isFormValid}
+                className={`w-full px-6 py-3 rounded-xl font-semibold flex items-center justify-center transition-all duration-300 ${
+                  isFormValid && !isSubmitting
+                    ? 'bg-orange-600 text-white hover:bg-orange-700 hover:scale-105 shadow-lg hover:shadow-xl'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                }`}
               >
                 {isSubmitting ? (
                   <>
@@ -426,6 +470,11 @@ const RegistrationForm = () => {
                   </>
                 )}
               </button>
+              {!isFormValid && (
+                <p className="text-sm text-gray-500 text-center mt-2">
+                  Please fill in all required fields to submit your application
+                </p>
+              )}
             </div>
           </form>
         </div>

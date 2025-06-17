@@ -6,7 +6,7 @@ const Header = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const scrollToSection = (sectionId: string) => {
-    if (sectionId === 'top') {
+    if (sectionId === 'hero') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
       const element = document.getElementById(sectionId);
@@ -20,7 +20,7 @@ const Header = () => {
   const navLinks = [
     { label: 'Home', id: 'hero' },
     { label: 'Benefits', id: 'benefits' },
-    { label: 'Apply Now', id: 'form' },
+    { label: 'Register', id: 'form' },
     { label: 'About', id: 'about' }
   ];
 
