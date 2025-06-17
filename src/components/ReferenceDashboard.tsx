@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { signOut } from 'firebase/auth';
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { LogOut, Users, Target, CheckCircle, TrendingUp, Phone, MessageCircle, Eye, Download, Search, Filter } from 'lucide-react';
+import { LogOut, Users, Target, CheckCircle, TrendingUp, Phone, MessageCircle, Eye, Download, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 
@@ -13,6 +13,12 @@ interface Application {
   email: string;
   phone: string;
   city: string;
+  age: string;
+  gender: string;
+  education: string;
+  currentPosition: string;
+  workingHours: string;
+  whyThisRole: string;
   status: string;
   registrationCompleted: boolean;
   createdAt: any;
@@ -26,6 +32,24 @@ interface ReferenceData {
   target: number;
 }
 
+const STATUS_OPTIONS = [
+  'New',
+  'Applied', 
+  'Shortlisted',
+  'Interview Scheduled',
+  'Hired',
+  'Rejected'
+];
+
+const STATUS_COLORS = {
+  'New': 'bg-gray-100 text-gray-800',
+  'Applied': 'bg-blue-100 text-blue-800',
+  'Shortlisted': 'bg-yellow-100 text-yellow-800',
+  'Interview Scheduled': 'bg-purple-100 text-purple-800',
+  'Hired': 'bg-green-100 text-green-800',
+  'Rejected': 'bg-red-100 text-red-800'
+};
+
 const ReferenceDashboard = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [referenceData, setReferenceData] = useState<ReferenceData | null>(null);
@@ -33,6 +57,8 @@ const ReferenceDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [cityFilter, setCityFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     fetchReferenceData();
@@ -62,7 +88,6 @@ const ReferenceDashboard = () => {
     try {
       const user = auth.currentUser;
       if (user) {
-        // Query applications where referenceId matches current user's UID
         const q = query(
           collection(db, 'applicants'),
           where('referenceId', '==', user.uid)
@@ -73,7 +98,6 @@ const ReferenceDashboard = () => {
           apps.push({ id: doc.id, ...doc.data() } as Application);
         });
         
-        // Sort by creation date (newest first)
         apps.sort((a, b) => {
           if (a.createdAt && b.createdAt) {
             return b.createdAt.toDate() - a.createdAt.toDate();
@@ -93,6 +117,32 @@ const ReferenceDashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (applicationId: string, newStatus: string) => {
+    try {
+      await updateDoc(doc(db, 'applicants', applicationId), {
+        status: newStatus
+      });
+      
+      setApplications(prev => 
+        prev.map(app => 
+          app.id === applicationId ? { ...app, status: newStatus } : app
+        )
+      );
+      
+      toast({
+        title: "Status Updated",
+        description: `Application status changed to ${newStatus}`,
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update status. Please try again.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -118,14 +168,15 @@ const ReferenceDashboard = () => {
   };
 
   const exportToExcel = () => {
-    // Basic CSV export functionality
     const csvContent = [
-      ['Name', 'Email', 'Phone', 'City', 'Status', 'Registration', 'Date'].join(','),
+      ['Name', 'Email', 'Phone', 'City', 'Age', 'Education', 'Status', 'Registration', 'Date'].join(','),
       ...filteredApplications.map(app => [
         app.fullName,
         app.email,
         app.phone,
         app.city,
+        app.age,
+        app.education,
         app.status || 'New',
         app.registrationCompleted ? 'Yes' : 'No',
         app.createdAt ? new Date(app.createdAt.toDate()).toLocaleDateString() : 'N/A'
@@ -149,6 +200,11 @@ const ReferenceDashboard = () => {
     return matchesSearch && matchesStatus && matchesCity;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredApplications.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedApplications = filteredApplications.slice(startIndex, startIndex + itemsPerPage);
+
   const thisMonthApplications = applications.filter(app => {
     if (!app.createdAt) return false;
     const appDate = new Date(app.createdAt.toDate());
@@ -156,7 +212,7 @@ const ReferenceDashboard = () => {
     return appDate.getMonth() === now.getMonth() && appDate.getFullYear() === now.getFullYear();
   });
 
-  const qualifiedCandidates = applications.filter(app => app.status === 'Qualified');
+  const qualifiedCandidates = applications.filter(app => app.status === 'Hired');
   const completedRegistrations = applications.filter(app => app.registrationCompleted);
   const targetAchieved = referenceData?.target ? (completedRegistrations.length / referenceData.target * 100) : 0;
 
@@ -219,7 +275,7 @@ const ReferenceDashboard = () => {
                 <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Qualified</p>
+                <p className="text-sm font-medium text-gray-600">Hired</p>
                 <p className="text-2xl font-bold text-gray-900">{qualifiedCandidates.length}</p>
               </div>
             </div>
@@ -283,10 +339,9 @@ const ReferenceDashboard = () => {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="All">All Status</option>
-                    <option value="New">New</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Qualified">Qualified</option>
-                    <option value="Hired">Hired</option>
+                    {STATUS_OPTIONS.map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
                   </select>
 
                   {uniqueCities.length > 0 && (
@@ -321,14 +376,15 @@ const ReferenceDashboard = () => {
                     <TableRow>
                       <TableHead>Applicant</TableHead>
                       <TableHead>Contact</TableHead>
-                      <TableHead>City</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Details</TableHead>
+                      <TableHead>Reference</TableHead>
                       <TableHead>Registration</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredApplications.map((app) => (
+                    {paginatedApplications.map((app) => (
                       <TableRow key={app.id}>
                         <TableCell>
                           <div>
@@ -337,20 +393,21 @@ const ReferenceDashboard = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <p className="font-medium">{app.phone}</p>
+                          <div>
+                            <p className="font-medium">{app.phone}</p>
+                            <p className="text-sm text-gray-600">{app.city}</p>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <span className="px-2 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
-                            {app.city}
-                          </span>
+                          <div className="text-sm">
+                            <p><span className="font-medium">Age:</span> {app.age}</p>
+                            <p><span className="font-medium">Education:</span> {app.education}</p>
+                            <p><span className="font-medium">Position:</span> {app.currentPosition}</p>
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded-full text-sm font-medium ${
-                            (app.status || 'New') === 'Qualified' ? 'bg-green-100 text-green-800' :
-                            (app.status || 'New') === 'In Progress' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {app.status || 'New'}
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                            {app.referenceName}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -359,6 +416,19 @@ const ReferenceDashboard = () => {
                           ) : (
                             <div className="w-5 h-5 border-2 border-gray-300 rounded-full"></div>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <select
+                            value={app.status || 'New'}
+                            onChange={(e) => handleStatusUpdate(app.id, e.target.value)}
+                            className={`px-2 py-1 rounded-full text-sm font-medium border-0 outline-none ${
+                              STATUS_COLORS[app.status as keyof typeof STATUS_COLORS] || STATUS_COLORS['New']
+                            }`}
+                          >
+                            {STATUS_OPTIONS.map(status => (
+                              <option key={status} value={status}>{status}</option>
+                            ))}
+                          </select>
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-2">
@@ -391,6 +461,34 @@ const ReferenceDashboard = () => {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-6 py-4 border-t">
+                  <div className="text-sm text-gray-600">
+                    Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredApplications.length)} of {filteredApplications.length} results
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <span className="text-sm text-gray-600">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

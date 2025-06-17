@@ -26,7 +26,6 @@ const RegistrationForm = () => {
     city: '',
     currentPosition: '',
     workingHours: '',
-    weeklyAvailability: '',
     whyThisRole: '',
     reference: '',
     referenceId: ''
@@ -66,8 +65,7 @@ const RegistrationForm = () => {
   const validateForm = () => {
     const requiredFields = [
       'fullName', 'email', 'phone', 'age', 'gender', 'education', 
-      'city', 'currentPosition', 'workingHours', 'weeklyAvailability', 
-      'whyThisRole', 'reference'
+      'city', 'currentPosition', 'workingHours', 'whyThisRole', 'reference'
     ];
     
     const isValid = requiredFields.every(field => {
@@ -85,7 +83,6 @@ const RegistrationForm = () => {
       [name]: value
     }));
 
-    // If reference is selected, also store the reference ID
     if (name === 'reference' && value) {
       const selectedReference = references.find(ref => ref.name === value);
       setFormData(prev => ({
@@ -128,7 +125,6 @@ const RegistrationForm = () => {
         description: "Thank you for applying! Our team will review your application and get back to you soon.",
       });
 
-      // Reset form
       setFormData({
         fullName: '',
         email: '',
@@ -139,7 +135,6 @@ const RegistrationForm = () => {
         city: '',
         currentPosition: '',
         workingHours: '',
-        weeklyAvailability: '',
         whyThisRole: '',
         reference: '',
         referenceId: ''
@@ -157,16 +152,21 @@ const RegistrationForm = () => {
     }
   };
 
-  // Generate working hours options from 9:00 AM to 9:00 PM
-  const generateWorkingHours = () => {
-    const hours = [];
-    for (let i = 9; i <= 21; i++) {
-      const hour12 = i > 12 ? i - 12 : i;
-      const ampm = i >= 12 ? 'PM' : 'AM';
-      const displayHour = hour12 === 0 ? 12 : hour12;
-      hours.push(`${displayHour}:00 ${ampm}`);
+  // Generate time slot options from 9:00 AM to 9:00 PM
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let i = 9; i < 21; i++) {
+      const startHour = i > 12 ? i - 12 : i;
+      const endHour = i + 1 > 12 ? i + 1 - 12 : i + 1;
+      const startAmpm = i >= 12 ? 'PM' : 'AM';
+      const endAmpm = i + 1 >= 12 ? 'PM' : 'AM';
+      
+      const startDisplay = startHour === 0 ? 12 : startHour;
+      const endDisplay = endHour === 0 ? 12 : endHour;
+      
+      slots.push(`${startDisplay}:00 ${startAmpm} - ${endDisplay}:00 ${endAmpm}`);
     }
-    return hours;
+    return slots;
   };
 
   return (
@@ -347,10 +347,10 @@ const RegistrationForm = () => {
                 <Clock className="w-5 h-5 mr-2 text-orange-500" />
                 Availability Information
               </h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label htmlFor="workingHours" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Preferred Working Hours *
+                    Preferred Working Time Slot *
                   </label>
                   <select
                     id="workingHours"
@@ -360,30 +360,10 @@ const RegistrationForm = () => {
                     required
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
                   >
-                    <option value="">Select preferred working hour</option>
-                    {generateWorkingHours().map((hour) => (
-                      <option key={hour} value={hour}>{hour}</option>
+                    <option value="">Select preferred working time slot</option>
+                    {generateTimeSlots().map((slot) => (
+                      <option key={slot} value={slot}>{slot}</option>
                     ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="weeklyAvailability" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Weekly Availability *
-                  </label>
-                  <select
-                    id="weeklyAvailability"
-                    name="weeklyAvailability"
-                    value={formData.weeklyAvailability}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                  >
-                    <option value="">Select Weekly Availability</option>
-                    <option value="20-30 hours">20-30 hours</option>
-                    <option value="30-40 hours">30-40 hours</option>
-                    <option value="40+ hours">40+ hours</option>
-                    <option value="Part-time weekends">Part-time weekends</option>
                   </select>
                 </div>
               </div>
