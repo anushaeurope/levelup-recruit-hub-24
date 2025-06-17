@@ -376,6 +376,64 @@ const AdminDashboard = () => {
     count: applicants.filter(app => app.referenceId === ref.id || app.reference === ref.name).length
   }));
 
+  const createReference = async () => {
+    if (!newReferenceData.name.trim() || !newReferenceData.email.trim() || !newReferenceData.phone.trim() || !newReferenceData.password.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (newReferenceData.password.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCreatingReference(true);
+    try {
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, newReferenceData.email, newReferenceData.password);
+      const user = userCredential.user;
+
+      // Save reference data in Firestore
+      await setDoc(doc(db, 'references', user.uid), {
+        name: newReferenceData.name,
+        email: newReferenceData.email,
+        phone: newReferenceData.phone,
+        createdBy: auth.currentUser?.uid,
+        createdAt: Timestamp.now(),
+        type: 'reference'
+      });
+
+      // Reset form and close panel
+      setNewReferenceData({ name: '', email: '', phone: '', password: '' });
+      setShowCreateReference(false);
+      
+      // Refresh references list
+      fetchReferences();
+
+      toast({
+        title: "Reference Created",
+        description: `Reference login created for ${newReferenceData.name}`,
+      });
+    } catch (error: any) {
+      console.error('Error creating reference:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create reference login",
+        variant: "destructive"
+      });
+    } finally {
+      setCreatingReference(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-5">
