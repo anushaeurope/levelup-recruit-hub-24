@@ -30,10 +30,27 @@ interface Reference {
   name: string;
 }
 
+interface Agent {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  reference: string;
+  createdAt: Timestamp;
+}
+
 const AdminDashboard = () => {
   const [applicants, setApplicants] = useState<Applicant[]>([]);
   const [filteredApplicants, setFilteredApplicants] = useState<Applicant[]>([]);
   const [references, setReferences] = useState<Reference[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [showAddAgent, setShowAddAgent] = useState(false);
+  const [newAgent, setNewAgent] = useState({
+    name: '',
+    email: '',
+    password: '',
+    reference: ''
+  });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -52,6 +69,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchApplicants();
     fetchReferences();
+    fetchAgents();
   }, []);
 
   useEffect(() => {
@@ -100,6 +118,25 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching references:', error);
+    }
+  };
+
+  const fetchAgents = async () => {
+    try {
+      const q = query(collection(db, 'agents'));
+      const querySnapshot = await getDocs(q);
+      const agentsData: any[] = [];
+      
+      querySnapshot.forEach((doc) => {
+        agentsData.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      setAgents(agentsData);
+    } catch (error) {
+      console.error('Error fetching agents:', error);
     }
   };
 
@@ -376,6 +413,13 @@ const AdminDashboard = () => {
     );
   }
 
+  const tabs = [
+    { id: 'applications', label: 'Applications', icon: '📋' },
+    { id: 'references', label: 'References', icon: '👥' },
+    { id: 'agents', label: 'Agents', icon: '🔐' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' }
+  ];
+
   return (
     <div className="min-h-screen bg-gray-50 font-inter">
       {/* Header - Sticky */}
@@ -405,31 +449,23 @@ const AdminDashboard = () => {
       <div className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto">
         {/* Tab Navigation */}
         <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl mb-8 max-w-md">
-          <button
-            onClick={() => setActiveTab('applicants')}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-              activeTab === 'applicants'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Users className="w-4 h-4 inline mr-2" />
-            Applicants
-          </button>
-          <button
-            onClick={() => setActiveTab('references')}
-            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-              activeTab === 'references'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Settings className="w-4 h-4 inline mr-2" />
-            References
-          </button>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                activeTab === tab.id
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <tab.icon className="w-4 h-4 inline mr-2" />
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {activeTab === 'applicants' && (
+        {activeTab === 'applications' && (
           <>
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
@@ -943,6 +979,104 @@ const AdminDashboard = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'agents' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Agent Management</h2>
+              <button
+                onClick={() => setShowAddAgent(true)}
+                className="premium-cta-button"
+              >
+                Add Agent
+              </button>
+            </div>
+
+            {showAddAgent && (
+              <div className="professional-card p-6">
+                <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
+                <form onSubmit={handleAddAgent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input
+                    type="text"
+                    placeholder="Agent Name"
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
+                    className="premium-input"
+                    required
+                  />
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={newAgent.email}
+                    onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
+                    className="premium-input"
+                    required
+                  />
+                  <input
+                    type="password"
+                    placeholder="Password"
+                    value={newAgent.password}
+                    onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
+                    className="premium-input"
+                    required
+                  />
+                  <select
+                    value={newAgent.reference}
+                    onChange={(e) => setNewAgent({...newAgent, reference: e.target.value})}
+                    className="premium-input"
+                    required
+                  >
+                    <option value="">Select Reference</option>
+                    {references.map((ref) => (
+                      <option key={ref.id} value={ref.name}>{ref.name}</option>
+                    ))}
+                  </select>
+                  <div className="md:col-span-2 flex gap-2">
+                    <button type="submit" className="premium-cta-button">Add Agent</button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddAgent(false)}
+                      className="premium-secondary-button"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="professional-card">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {agents.map((agent) => (
+                      <tr key={agent.id}>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{agent.name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{agent.email}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{agent.reference}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {agent.createdAt?.toDate().toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <button className="text-red-600 hover:text-red-900">Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
