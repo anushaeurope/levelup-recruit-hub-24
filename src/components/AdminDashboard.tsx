@@ -1,1088 +1,491 @@
+
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, Timestamp, addDoc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, query, orderBy, where } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield, Trash2, Eye, Plus, Settings, UserCheck, Briefcase } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import { Plus, Trash2, Download, Filter, Users, UserPlus, LogOut, Star } from 'lucide-react';
 
-interface Applicant {
+interface Submission {
   id: string;
   fullName: string;
-  email: string;
   phone: string;
-  age: string;
+  email: string;
+  city: string;
+  age: number;
   gender: string;
   education: string;
-  city: string;
   currentPosition: string;
-  workingHours: string;
-  weeklyAvailability: string;
-  whyThisRole: string;
   reference: string;
-  status: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review';
-  salesCompleted: number;
-  notes?: string;
-  submittedAt: Timestamp;
-}
-
-interface Reference {
-  id: string;
-  name: string;
+  createdAt: any;
+  submittedAt: any;
+  status?: string;
+  starred?: boolean;
 }
 
 interface Agent {
   id: string;
   name: string;
   email: string;
-  password: string;
-  reference: string;
-  createdAt: Timestamp;
+  referenceLabel: string;
+  createdAt: any;
 }
 
 const AdminDashboard = () => {
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [filteredApplicants, setFilteredApplicants] = useState<Applicant[]>([]);
-  const [references, setReferences] = useState<Reference[]>([]);
-  const [agents, setAgents] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('applications');
+  const [filterReference, setFilterReference] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterDate, setFilterDate] = useState('');
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
     password: '',
-    reference: ''
+    referenceLabel: ''
   });
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [cityFilter, setCityFilter] = useState('All');
-  const [referenceFilter, setReferenceFilter] = useState('All');
-  const [activeTab, setActiveTab] = useState('applicants');
-  const [editingApplicant, setEditingApplicant] = useState<string | null>(null);
-  const [editingSales, setEditingSales] = useState<number>(0);
-  const [editingNotes, setEditingNotes] = useState<string>('');
-  const [viewingApplicant, setViewingApplicant] = useState<Applicant | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [newReferenceName, setNewReferenceName] = useState('');
-  const [editingReference, setEditingReference] = useState<string | null>(null);
-  const [editingReferenceName, setEditingReferenceName] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchApplicants();
-    fetchReferences();
+    fetchSubmissions();
     fetchAgents();
   }, []);
 
-  useEffect(() => {
-    filterApplicants();
-  }, [applicants, searchTerm, statusFilter, cityFilter, referenceFilter]);
-
-  const fetchApplicants = async () => {
+  const fetchSubmissions = async () => {
     try {
       const q = query(collection(db, 'applicants'), orderBy('submittedAt', 'desc'));
       const querySnapshot = await getDocs(q);
-      const applicantsData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Applicant[];
+      const submissionsData: Submission[] = [];
       
-      setApplicants(applicantsData);
-    } catch (error) {
-      console.error('Error fetching applicants:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch applicants data",
-        variant: "destructive"
+      querySnapshot.forEach((doc) => {
+        submissionsData.push({
+          id: doc.id,
+          ...doc.data()
+        } as Submission);
       });
+      
+      setSubmissions(submissionsData);
+    } catch (error) {
+      console.error('Error fetching submissions:', error);
+      toast.error('Failed to load applications');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchReferences = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, 'references'));
-      const referencesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name
-      })) as Reference[];
-      
-      // If no references exist, create default ones
-      if (referencesData.length === 0) {
-        const defaultReferences = ['Govardhan', 'Srinu', 'Anand', 'Mario', 'Pradeep', 'ETHAN'];
-        for (const refName of defaultReferences) {
-          await addDoc(collection(db, 'references'), { name: refName });
-        }
-        fetchReferences(); // Refetch after creating defaults
-      } else {
-        setReferences(referencesData);
-      }
-    } catch (error) {
-      console.error('Error fetching references:', error);
-    }
-  };
-
   const fetchAgents = async () => {
     try {
-      const q = query(collection(db, 'agents'));
-      const querySnapshot = await getDocs(q);
-      const agentsData: any[] = [];
+      const querySnapshot = await getDocs(collection(db, 'agents'));
+      const agentsData: Agent[] = [];
       
       querySnapshot.forEach((doc) => {
         agentsData.push({
           id: doc.id,
           ...doc.data()
-        });
+        } as Agent);
       });
       
       setAgents(agentsData);
     } catch (error) {
       console.error('Error fetching agents:', error);
+      toast.error('Failed to load agents');
     }
   };
 
-  const filterApplicants = () => {
-    let filtered = applicants;
-
-    if (searchTerm) {
-      filtered = filtered.filter(applicant =>
-        applicant.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.phone.includes(searchTerm)
-      );
-    }
-
-    if (statusFilter !== 'All') {
-      filtered = filtered.filter(applicant => applicant.status === statusFilter);
-    }
-
-    if (cityFilter !== 'All') {
-      filtered = filtered.filter(applicant => applicant.city === cityFilter);
-    }
-
-    if (referenceFilter !== 'All') {
-      filtered = filtered.filter(applicant => applicant.reference === referenceFilter);
-    }
-
-    setFilteredApplicants(filtered);
-  };
-
-  const addReference = async () => {
-    if (!newReferenceName.trim()) return;
+  const handleAddAgent = async (e: React.FormEvent) => {
+    e.preventDefault();
     
+    if (!newAgent.name || !newAgent.email || !newAgent.password || !newAgent.referenceLabel) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
     try {
-      await addDoc(collection(db, 'references'), { name: newReferenceName.trim() });
-      setNewReferenceName('');
-      fetchReferences();
-      toast({
-        title: "Reference Added",
-        description: `${newReferenceName} has been added to the reference list`,
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(auth, newAgent.email, newAgent.password);
+      
+      // Add agent to Firestore
+      await addDoc(collection(db, 'agents'), {
+        name: newAgent.name,
+        email: newAgent.email,
+        referenceLabel: newAgent.referenceLabel,
+        createdAt: new Date(),
+        uid: userCredential.user.uid
       });
-    } catch (error) {
-      console.error('Error adding reference:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add reference",
-        variant: "destructive"
+
+      // Add reference to references collection for dropdown
+      await addDoc(collection(db, 'references'), {
+        name: newAgent.referenceLabel
       });
+
+      toast.success('Agent created successfully');
+      setNewAgent({ name: '', email: '', password: '', referenceLabel: '' });
+      setShowAddAgent(false);
+      fetchAgents();
+    } catch (error: any) {
+      console.error('Error creating agent:', error);
+      toast.error(error.message || 'Failed to create agent');
     }
   };
 
-  const updateReference = async (id: string, newName: string) => {
-    try {
-      await updateDoc(doc(db, 'references', id), { name: newName });
-      setEditingReference(null);
-      setEditingReferenceName('');
-      fetchReferences();
-      toast({
-        title: "Reference Updated",
-        description: "Reference name has been updated",
-      });
-    } catch (error) {
-      console.error('Error updating reference:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update reference",
-        variant: "destructive"
-      });
-    }
-  };
+  const handleDeleteAgent = async (agentId: string) => {
+    if (!confirm('Are you sure you want to delete this agent?')) return;
 
-  const deleteReference = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'references', id));
-      fetchReferences();
-      toast({
-        title: "Reference Deleted",
-        description: "Reference has been removed",
-      });
+      await deleteDoc(doc(db, 'agents', agentId));
+      toast.success('Agent deleted successfully');
+      fetchAgents();
     } catch (error) {
-      console.error('Error deleting reference:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete reference",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const updateApplicantStatus = async (id: string, newStatus: 'New' | 'Contacted' | 'Hired' | 'Rejected' | 'In Review') => {
-    try {
-      await updateDoc(doc(db, 'applicants', id), { status: newStatus });
-      setApplicants(prev => prev.map(app => 
-        app.id === id ? { ...app, status: newStatus } : app
-      ));
-      toast({
-        title: "Status Updated",
-        description: `Applicant status changed to ${newStatus}`,
-      });
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update status",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const updateSalesCount = async (id: string, salesCount: number) => {
-    try {
-      await updateDoc(doc(db, 'applicants', id), { salesCompleted: salesCount });
-      setApplicants(prev => prev.map(app => 
-        app.id === id ? { ...app, salesCompleted: salesCount } : app
-      ));
-      setEditingApplicant(null);
-      toast({
-        title: "Registrations Updated",
-        description: `Registration count updated to ${salesCount}`,
-      });
-    } catch (error) {
-      console.error('Error updating registrations:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update registration count",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const updateNotes = async (id: string, notes: string) => {
-    try {
-      await updateDoc(doc(db, 'applicants', id), { notes });
-      setApplicants(prev => prev.map(app => 
-        app.id === id ? { ...app, notes } : app
-      ));
-      setEditingApplicant(null);
-      setEditingNotes('');
-      toast({
-        title: "Notes Updated",
-        description: "Applicant notes have been updated",
-      });
-    } catch (error) {
-      console.error('Error updating notes:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update notes",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const deleteApplicant = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'applicants', id));
-      setApplicants(prev => prev.filter(app => app.id !== id));
-      setShowDeleteConfirm(null);
-      toast({
-        title: "Applicant Deleted",
-        description: "Applicant has been removed from the system",
-      });
-    } catch (error) {
-      console.error('Error deleting applicant:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete applicant",
-        variant: "destructive"
-      });
+      console.error('Error deleting agent:', error);
+      toast.error('Failed to delete agent');
     }
   };
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      toast({
-        title: "Logged Out",
-        description: "You have been successfully logged out",
-      });
+      navigate('/');
+      toast.success('Logged out successfully');
     } catch (error) {
       console.error('Logout error:', error);
+      toast.error('Failed to logout');
     }
   };
 
-  const handleCallClick = (phone: string) => {
-    window.open(`tel:+91${phone}`, '_self');
-  };
-
-  const handleWhatsAppClick = (phone: string, name: string) => {
-    const message = `Hi ${name}, thank you for applying as SRM at ManaCLG LevelUp. Our team will be in touch shortly.`;
-    const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, '_blank');
-  };
-
-  const exportToExcel = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Age', 'Gender', 'Education', 'City', 'Current Position', 'Working Hours', 'Weekly Availability', 'Reference', 'Status', 'Registrations Completed', 'Notes', 'Application Date'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredApplicants.map(app => [
-        app.fullName,
-        app.email,
-        app.phone,
-        app.age,
-        app.gender,
-        app.education,
-        app.city,
-        app.currentPosition || '',
-        app.workingHours,
-        app.weeklyAvailability,
-        app.reference,
-        app.status,
-        app.salesCompleted,
-        app.notes || '',
-        app.submittedAt?.toDate().toLocaleDateString()
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `srm_applicants_${referenceFilter !== 'All' ? referenceFilter + '_' : ''}${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Export Successful",
-      description: `${filteredApplicants.length} applicant records exported to CSV`,
+  const getFilteredSubmissions = () => {
+    return submissions.filter(submission => {
+      const referenceMatch = !filterReference || submission.reference === filterReference;
+      const statusMatch = !filterStatus || (submission.status || 'New') === filterStatus;
+      const dateMatch = !filterDate || 
+        submission.submittedAt?.toDate().toISOString().split('T')[0] === filterDate;
+      return referenceMatch && statusMatch && dateMatch;
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'New':
-        return 'text-blue-600 bg-blue-50 border-blue-200';
-      case 'Contacted':
-        return 'text-orange-600 bg-orange-50 border-orange-200';
-      case 'In Review':
-        return 'text-purple-600 bg-purple-50 border-purple-200';
-      case 'Hired':
-        return 'text-green-600 bg-green-50 border-green-200';
-      case 'Rejected':
-        return 'text-red-600 bg-red-50 border-red-200';
-      default:
-        return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
+  const exportToExcel = (referenceFilter?: string) => {
+    const dataToExport = referenceFilter 
+      ? submissions.filter(s => s.reference === referenceFilter)
+      : getFilteredSubmissions();
+      
+    const exportData = dataToExport.map(submission => ({
+      Name: submission.fullName,
+      Phone: submission.phone,
+      Email: submission.email,
+      City: submission.city,
+      Age: submission.age,
+      Gender: submission.gender,
+      Education: submission.education,
+      'Current Position': submission.currentPosition,
+      Reference: submission.reference,
+      'Application Date': submission.submittedAt?.toDate().toLocaleDateString(),
+      Status: submission.status || 'New',
+      Starred: submission.starred ? 'Yes' : 'No'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Applications');
+    
+    const fileName = referenceFilter 
+      ? `mana-levelup-${referenceFilter}-applications.xlsx`
+      : 'mana-levelup-all-applications.xlsx';
+      
+    XLSX.writeFile(wb, fileName);
+    toast.success('Excel file downloaded successfully');
   };
 
-  // Calculate KPIs
-  const thisMonth = new Date().getMonth();
-  const thisYear = new Date().getFullYear();
-
-  const monthlyApplicants = applicants.filter(app => {
-    const date = app.submittedAt?.toDate();
-    return date && date.getMonth() === thisMonth && date.getFullYear() === thisYear;
-  }).length;
-
-  const qualifiedCandidates = applicants.filter(app => app.status === 'Hired').length;
-  const totalRegistrations = applicants.reduce((sum, app) => sum + app.salesCompleted, 0);
-  const targetAchieved = Math.min((totalRegistrations / (applicants.length * 4) * 100), 100);
-  const uniqueCities = [...new Set(applicants.map(app => app.city))];
-  const referenceStats = references.map(ref => ({
-    name: ref.name,
-    count: applicants.filter(app => app.reference === ref.name).length
-  }));
+  const filteredSubmissions = getFilteredSubmissions();
+  const uniqueReferences = [...new Set(submissions.map(s => s.reference))];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-5">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  const handleAddAgent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newAgent.name || !newAgent.email || !newAgent.password || !newAgent.reference) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      await addDoc(collection(db, 'agents'), {
-        ...newAgent,
-        createdAt: Timestamp.now()
-      });
-      
-      setNewAgent({ name: '', email: '', password: '', reference: '' });
-      setShowAddAgent(false);
-      fetchAgents();
-      
-      toast({
-        title: "Agent Added",
-        description: `${newAgent.name} has been added as an agent`,
-      });
-    } catch (error) {
-      console.error('Error adding agent:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add agent",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const tabs = [
-    { id: 'applications', label: 'Applications', icon: Users },
-    { id: 'references', label: 'References', icon: UserCheck },
-    { id: 'agents', label: 'Agents', icon: Shield },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-  ];
-
   return (
-    <div className="min-h-screen bg-gray-50 font-inter">
-      {/* Header - Sticky */}
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-        <div className="px-5 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">SRM Admin Dashboard</h1>
-                <p className="text-sm text-gray-600 hidden sm:block">ManaCLG LevelUp – Student Relationship Manager</p>
-              </div>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition-all duration-300 text-sm font-medium"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Logout
-            </button>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      {/* Header */}
+      <header className="bg-gray-800 shadow-lg border-b border-gray-700">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center">
+            <img 
+              src="https://res.cloudinary.com/dvmrhs2ek/image/upload/v1750141579/qkehxe09cunkcvyh8o1i.jpg"
+              alt="ManaCLG LevelUp Logo"
+              className="h-10 w-auto mr-4"
+            />
+            <h1 className="text-2xl font-bold text-white font-montserrat">Admin Dashboard</h1>
           </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Logout
+          </button>
         </div>
       </header>
 
-      <div className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto">
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 p-1 bg-gray-100 rounded-xl mb-8 max-w-md">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-                activeTab === tab.id
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <tab.icon className="w-4 h-4 inline mr-2" />
-              {tab.label}
-            </button>
-          ))}
+      <div className="container mx-auto px-4 py-8">
+        {/* Navigation Tabs */}
+        <div className="flex space-x-1 mb-8 bg-gray-800 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab('applications')}
+            className={`flex items-center px-4 py-2 rounded-md font-semibold transition-colors duration-300 ${
+              activeTab === 'applications'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <Users className="w-4 h-4 mr-2" />
+            Applications
+          </button>
+          <button
+            onClick={() => setActiveTab('agents')}
+            className={`flex items-center px-4 py-2 rounded-md font-semibold transition-colors duration-300 ${
+              activeTab === 'agents'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            }`}
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Agents
+          </button>
         </div>
 
         {activeTab === 'applications' && (
           <>
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium mb-1">Total Applicants This Month</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
-                  </div>
-                  <div className="text-3xl">👥</div>
-                </div>
+            {/* Analytics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-2">Total Applications</h3>
+                <p className="text-3xl font-bold text-blue-400">{submissions.length}</p>
               </div>
-
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium mb-1">Qualified Candidates</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
-                  </div>
-                  <div className="text-3xl">✅</div>
-                </div>
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-2">New</h3>
+                <p className="text-3xl font-bold text-yellow-400">
+                  {submissions.filter(s => (s.status || 'New') === 'New').length}
+                </p>
               </div>
-
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium mb-1">Total Registrations</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalRegistrations}</p>
-                  </div>
-                  <div className="text-3xl">📈</div>
-                </div>
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-2">Hired</h3>
+                <p className="text-3xl font-bold text-green-400">
+                  {submissions.filter(s => s.status === 'Hired').length}
+                </p>
               </div>
-
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium mb-1">Target Achieved</p>
-                    <p className="text-2xl sm:text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
-                  </div>
-                  <div className="text-3xl">🎯</div>
-                </div>
-                <div className="mt-4 bg-gray-200 rounded-full h-2">
-                  <div 
-                    className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${targetAchieved}%` }}
-                  ></div>
-                </div>
+              <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-2">Active Agents</h3>
+                <p className="text-3xl font-bold text-purple-400">{agents.length}</p>
               </div>
             </div>
 
-            {/* Filters Section */}
-            <div className="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-gray-100 mb-8">
-              <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-                <div className="w-full lg:flex-1">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* Search */}
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <input
-                        type="text"
-                        placeholder="Search applicants..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                      />
-                    </div>
-
-                    {/* Status Filter */}
+            {/* Filters and Export */}
+            <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Filter by Reference</label>
                     <select
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value)}
-                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                      value={filterReference}
+                      onChange={(e) => setFilterReference(e.target.value)}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
                     >
-                      <option value="All">All Status</option>
+                      <option value="">All References</option>
+                      {uniqueReferences.map(ref => (
+                        <option key={ref} value={ref}>{ref}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Filter by Status</label>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">All Status</option>
                       <option value="New">New</option>
                       <option value="Contacted">Contacted</option>
-                      <option value="In Review">In Review</option>
+                      <option value="Follow-Up">Follow-Up</option>
                       <option value="Hired">Hired</option>
-                      <option value="Rejected">Rejected</option>
-                    </select>
-
-                    {/* City Filter */}
-                    <select
-                      value={cityFilter}
-                      onChange={(e) => setCityFilter(e.target.value)}
-                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    >
-                      <option value="All">All Cities</option>
-                      {uniqueCities.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
-
-                    {/* Reference Filter */}
-                    <select
-                      value={referenceFilter}
-                      onChange={(e) => setReferenceFilter(e.target.value)}
-                      className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    >
-                      <option value="All">All References</option>
-                      {references.map(ref => (
-                        <option key={ref.id} value={ref.name}>{ref.name}</option>
-                      ))}
                     </select>
                   </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Filter by Date</label>
+                    <input
+                      type="date"
+                      value={filterDate}
+                      onChange={(e) => setFilterDate(e.target.value)}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
-
-                {/* Results count */}
-                <div className="flex items-center text-gray-600 text-sm">
-                  <Filter className="w-4 h-4 mr-2" />
-                  <span>
-                    {filteredApplicants.length} of {applicants.length} applicants
-                  </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => exportToExcel()}
+                    className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export All
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Applicants Table/Cards */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-20">
-              {/* Desktop Table View */}
-              <div className="hidden lg:block overflow-x-auto">
+            {/* Export by Reference */}
+            <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
+              <h3 className="text-lg font-semibold text-white mb-4">Export by Reference</h3>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {uniqueReferences.map(ref => (
+                  <button
+                    key={ref}
+                    onClick={() => exportToExcel(ref)}
+                    className="flex items-center justify-between bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
+                  >
+                    <span className="truncate">{ref}</span>
+                    <Download className="w-4 h-4 ml-2" />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Applications Table */}
+            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+              <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
+                  <thead className="bg-gray-700">
                     <tr>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicant</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Reference</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registrations</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Contact</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reference</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {filteredApplicants.map((applicant) => (
-                      <tr key={applicant.id} className="hover:bg-gray-50 transition-colors duration-200">
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="font-semibold text-gray-900">{applicant.fullName}</div>
-                            <div className="text-sm text-gray-600 flex items-center mt-1">
-                              <MapPin className="w-3 h-3 mr-1" />
-                              {applicant.city}
-                            </div>
-                            <div className="text-xs text-gray-500 mt-1">
-                              {applicant.age} years, {applicant.gender}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-2">
-                            <div className="flex items-center text-sm text-gray-900">
-                              <Phone className="w-3 h-3 mr-2" />
-                              {applicant.phone}
-                            </div>
-                            <div className="flex items-center text-sm text-gray-600">
-                              <Mail className="w-3 h-3 mr-2" />
-                              {applicant.email}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            <div className="text-sm font-medium text-gray-900">{applicant.education}</div>
-                            <div className="text-xs text-gray-600 flex items-center">
-                              <Briefcase className="w-3 h-3 mr-1" />
-                              {applicant.currentPosition || 'Not specified'}
-                            </div>
-                            <div className="text-xs text-gray-600">{applicant.workingHours}</div>
-                            <div className="text-xs text-gray-500">{applicant.weeklyAvailability}</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
+                  <tbody className="bg-gray-800 divide-y divide-gray-700">
+                    {filteredSubmissions.map((submission) => (
+                      <tr key={submission.id} className="hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <UserCheck className="w-3 h-3 mr-1 text-orange-500" />
-                            <span className="text-sm font-medium text-gray-900">{applicant.reference}</span>
+                            {submission.starred && <Star className="w-4 h-4 text-yellow-400 mr-2 fill-current" />}
+                            <div className="font-medium text-white">{submission.fullName}</div>
                           </div>
                         </td>
-                        <td className="px-6 py-4">
-                          {editingApplicant === applicant.id ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="number"
-                                value={editingSales}
-                                onChange={(e) => setEditingSales(Number(e.target.value))}
-                                className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
-                                min="0"
-                              />
-                              <button
-                                onClick={() => updateSalesCount(applicant.id, editingSales)}
-                                className="text-green-600 hover:text-green-800"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingApplicant(null)}
-                                className="text-red-600 hover:text-red-800"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2">
-                              <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
-                              <button
-                                onClick={() => {
-                                  setEditingApplicant(applicant.id);
-                                  setEditingSales(applicant.salesCompleted);
-                                }}
-                                className="text-gray-400 hover:text-gray-600"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">{submission.phone}</div>
+                          <div className="text-sm text-gray-400">{submission.email}</div>
                         </td>
-                        <td className="px-6 py-4">
-                          <select
-                            value={applicant.status}
-                            onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-orange-500`}
-                          >
-                            <option value="New">New</option>
-                            <option value="Contacted">Contacted</option>
-                            <option value="In Review">In Review</option>
-                            <option value="Hired">Hired</option>
-                            <option value="Rejected">Rejected</option>
-                          </select>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {submission.reference}
+                          </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => setViewingApplicant(applicant)}
-                              className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
-                              title="View details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleCallClick(applicant.phone)}
-                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
-                              title="Call applicant"
-                            >
-                              <Phone className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
-                              className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
-                              title="WhatsApp message"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setShowDeleteConfirm(applicant.id)}
-                              className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
-                              title="Delete applicant"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                          {submission.submittedAt?.toDate().toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                            (submission.status || 'New') === 'New' ? 'bg-blue-100 text-blue-800' :
+                            (submission.status || 'New') === 'Contacted' ? 'bg-yellow-100 text-yellow-800' :
+                            (submission.status || 'New') === 'Follow-Up' ? 'bg-orange-100 text-orange-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {submission.status || 'New'}
+                          </span>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* Mobile Card View - Fixed responsive layout */}
-              <div className="lg:hidden p-4">
-                <div className="space-y-4">
-                  {filteredApplicants.map((applicant) => (
-                    <div key={applicant.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-gray-900 text-lg truncate">{applicant.fullName}</h3>
-                          <p className="text-sm text-gray-600 flex items-center mt-1">
-                            <MapPin className="w-3 h-3 mr-1 flex-shrink-0" />
-                            <span className="truncate">{applicant.city} • {applicant.age} years, {applicant.gender}</span>
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1 flex items-center">
-                            <UserCheck className="w-3 h-3 mr-1 flex-shrink-0" />
-                            <span className="truncate">Ref: {applicant.reference}</span>
-                          </p>
-                        </div>
-                        <div className="ml-3 flex-shrink-0">
-                          <select
-                            value={applicant.status}
-                            onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as any)}
-                            className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none min-w-0`}
-                          >
-                            <option value="New">New</option>
-                            <option value="Contacted">Contacted</option>
-                            <option value="In Review">In Review</option>
-                            <option value="Hired">Hired</option>
-                            <option value="Rejected">Rejected</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2 mb-4 text-sm">
-                        <div className="flex items-center">
-                          <Phone className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
-                          <span className="font-medium text-gray-900 truncate">{applicant.phone}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Mail className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-600 truncate">{applicant.email}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Briefcase className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-600 truncate">{applicant.currentPosition || 'Not specified'}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-600 text-xs truncate">{applicant.workingHours} • {applicant.weeklyAvailability}</span>
-                        </div>
-                        <div className="flex items-center">
-                          <TrendingUp className="w-4 h-4 mr-2 text-gray-500 flex-shrink-0" />
-                          <span className="text-gray-600 text-sm">Registrations: </span>
-                          {editingApplicant === applicant.id ? (
-                            <div className="flex items-center space-x-2 ml-2">
-                              <input
-                                type="number"
-                                value={editingSales}
-                                onChange={(e) => setEditingSales(Number(e.target.value))}
-                                className="w-14 px-2 py-1 border border-gray-300 rounded text-gray-900 text-xs focus:border-orange-500 outline-none"
-                                min="0"
-                              />
-                              <button
-                                onClick={() => updateSalesCount(applicant.id, editingSales)}
-                                className="text-green-600 p-1"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={() => setEditingApplicant(null)}
-                                className="text-red-600 p-1"
-                              >
-                                <XCircle className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center space-x-2 ml-2">
-                              <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
-                              <button
-                                onClick={() => {
-                                  setEditingApplicant(applicant.id);
-                                  setEditingSales(applicant.salesCompleted);
-                                }}
-                                className="text-gray-400 p-1"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Fixed Mobile Action Buttons */}
-                      <div className="pt-3 border-t border-gray-200">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => setViewingApplicant(applicant)}
-                              className="flex-1 flex items-center justify-center px-2 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-300 text-xs font-medium min-w-0"
-                            >
-                              <Eye className="w-3 h-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">View</span>
-                            </button>
-                            <button
-                              onClick={() => handleCallClick(applicant.phone)}
-                              className="flex-1 flex items-center justify-center px-2 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-xs font-medium min-w-0"
-                            >
-                              <Phone className="w-3 h-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">Call</span>
-                            </button>
-                          </div>
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
-                              className="flex-1 flex items-center justify-center px-2 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-xs font-medium min-w-0"
-                            >
-                              <MessageCircle className="w-3 h-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">WhatsApp</span>
-                            </button>
-                            <button
-                              onClick={() => setShowDeleteConfirm(applicant.id)}
-                              className="flex items-center justify-center px-2 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all duration-300 text-xs font-medium flex-shrink-0"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {filteredApplicants.length === 0 && (
+              
+              {filteredSubmissions.length === 0 && (
                 <div className="text-center py-12">
-                  <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No applicants found matching your criteria</p>
+                  <Users className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-400">No applications found.</p>
                 </div>
               )}
             </div>
           </>
         )}
 
-        {activeTab === 'references' && (
-          <div className="space-y-8">
-            {/* Reference Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {referenceStats.map((stat) => (
-                <div key={stat.name} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{stat.name}</h3>
-                      <p className="text-2xl font-bold text-orange-600">{stat.count}</p>
-                      <p className="text-sm text-gray-500">applicants</p>
-                    </div>
-                    <UserCheck className="w-8 h-8 text-orange-500" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add New Reference */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add New Reference</h3>
-              <div className="flex space-x-3">
-                <input
-                  type="text"
-                  value={newReferenceName}
-                  onChange={(e) => setNewReferenceName(e.target.value)}
-                  placeholder="Enter reference name"
-                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                />
-                <button
-                  onClick={addReference}
-                  disabled={!newReferenceName.trim()}
-                  className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 font-medium"
-                >
-                  <Plus className="w-4 h-4 mr-2 inline" />
-                  Add
-                </button>
-              </div>
-            </div>
-
-            {/* References List */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">Manage References</h3>
-              </div>
-              <div className="divide-y divide-gray-200">
-                {references.map((reference) => (
-                  <div key={reference.id} className="px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <UserCheck className="w-5 h-5 text-orange-500" />
-                      {editingReference === reference.id ? (
-                        <input
-                          type="text"
-                          value={editingReferenceName}
-                          onChange={(e) => setEditingReferenceName(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:border-orange-500 outline-none"
-                        />
-                      ) : (
-                        <span className="font-medium text-gray-900">{reference.name}</span>
-                      )}
-                      <span className="text-sm text-gray-500">
-                        ({referenceStats.find(s => s.name === reference.name)?.count || 0} applicants)
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {editingReference === reference.id ? (
-                        <>
-                          <button
-                            onClick={() => updateReference(reference.id, editingReferenceName)}
-                            className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setEditingReference(null);
-                              setEditingReferenceName('');
-                            }}
-                            className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-all duration-300"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              setEditingReference(reference.id);
-                              setEditingReferenceName(reference.name);
-                            }}
-                            className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => deleteReference(reference.id)}
-                            className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-300"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'agents' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Agent Management</h2>
+          <>
+            {/* Add Agent Button */}
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-white">Agent Management</h2>
               <button
                 onClick={() => setShowAddAgent(true)}
-                className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-medium flex items-center"
+                className="flex items-center bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 Add Agent
               </button>
             </div>
 
+            {/* Add Agent Form */}
             {showAddAgent && (
-              <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold mb-4">Add New Agent</h3>
+              <div className="bg-gray-800 rounded-xl p-6 mb-6 border border-gray-700">
+                <h3 className="text-lg font-semibold text-white mb-4">Add New Agent</h3>
                 <form onSubmit={handleAddAgent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input
-                    type="text"
-                    placeholder="Agent Name"
-                    value={newAgent.name}
-                    onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
-                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email"
-                    value={newAgent.email}
-                    onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
-                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    required
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={newAgent.password}
-                    onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
-                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    required
-                  />
-                  <select
-                    value={newAgent.reference}
-                    onChange={(e) => setNewAgent({...newAgent, reference: e.target.value})}
-                    className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
-                    required
-                  >
-                    <option value="">Select Reference</option>
-                    {references.map((ref) => (
-                      <option key={ref.id} value={ref.name}>{ref.name}</option>
-                    ))}
-                  </select>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={newAgent.name}
+                      onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={newAgent.email}
+                      onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Password</label>
+                    <input
+                      type="password"
+                      value={newAgent.password}
+                      onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-300 mb-1">Reference Label</label>
+                    <input
+                      type="text"
+                      value={newAgent.referenceLabel}
+                      onChange={(e) => setNewAgent({...newAgent, referenceLabel: e.target.value})}
+                      className="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 w-full focus:ring-2 focus:ring-blue-500"
+                      required
+                    />
+                  </div>
                   <div className="md:col-span-2 flex gap-2">
-                    <button 
-                      type="submit" 
-                      className="px-6 py-3 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition-all duration-300 font-medium"
+                    <button
+                      type="submit"
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
                     >
-                      Add Agent
+                      Create Agent
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowAddAgent(false)}
-                      className="px-6 py-3 bg-gray-200 text-gray-800 rounded-xl hover:bg-gray-300 transition-all duration-300 font-medium"
+                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-semibold transition-colors duration-300"
                     >
                       Cancel
                     </button>
@@ -1091,229 +494,60 @@ const AdminDashboard = () => {
               </div>
             )}
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Agents Table */}
+            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-700">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Agent</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reference</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Reference Label</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="bg-gray-800 divide-y divide-gray-700">
                     {agents.map((agent) => (
-                      <tr key={agent.id}>
-                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{agent.name}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{agent.email}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">{agent.reference}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                      <tr key={agent.id} className="hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="font-medium text-white">{agent.name}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-300">{agent.email}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            {agent.referenceLabel}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                           {agent.createdAt?.toDate().toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <button className="text-red-600 hover:text-red-900">Delete</button>
+                          <button
+                            onClick={() => handleDeleteAgent(agent.id)}
+                            className="text-red-400 hover:text-red-300 transition-colors duration-300"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              
+              {agents.length === 0 && (
+                <div className="text-center py-12">
+                  <UserPlus className="w-12 h-12 text-gray-500 mx-auto mb-4" />
+                  <p className="text-gray-400">No agents found. Create your first agent.</p>
+                </div>
+              )}
             </div>
-          </div>
+          </>
         )}
       </div>
-
-      {/* Fixed Export Button */}
-      {activeTab === 'applicants' && (
-        <div className="fixed bottom-5 right-5 z-50">
-          <button
-            onClick={exportToExcel}
-            className="premium-cta-button"
-          >
-            <Download className="w-5 h-5 mr-2" />
-            Export {referenceFilter !== 'All' ? referenceFilter : 'All'} Data
-          </button>
-        </div>
-      )}
-
-      {/* Applicant Detail Modal */}
-      {viewingApplicant && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Applicant Details</h3>
-              <button
-                onClick={() => setViewingApplicant(null)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <XCircle className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Full Name</label>
-                <p className="text-gray-900">{viewingApplicant.fullName}</p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                  <p className="text-gray-900">{viewingApplicant.email}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-                  <p className="text-gray-900">{viewingApplicant.phone}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Age</label>
-                  <p className="text-gray-900">{viewingApplicant.age} years</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Gender</label>
-                  <p className="text-gray-900">{viewingApplicant.gender}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Education</label>
-                  <p className="text-gray-900">{viewingApplicant.education}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">City</label>
-                  <p className="text-gray-900">{viewingApplicant.city}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Current Position</label>
-                  <p className="text-gray-900">{viewingApplicant.currentPosition || 'Not specified'}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Reference</label>
-                  <p className="text-gray-900">{viewingApplicant.reference}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Working Hours</label>
-                  <p className="text-gray-900">{viewingApplicant.workingHours}</p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Weekly Availability</label>
-                  <p className="text-gray-900">{viewingApplicant.weeklyAvailability}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Status</label>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(viewingApplicant.status)}`}>
-                    {viewingApplicant.status}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Registrations</label>
-                <p className="text-gray-900 font-semibold">{viewingApplicant.salesCompleted}</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Why This Role?</label>
-                <p className="text-gray-900 bg-gray-50 p-3 rounded-lg">{viewingApplicant.whyThisRole}</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Admin Notes</label>
-                {editingApplicant === `notes-${viewingApplicant.id}` ? (
-                  <div className="space-y-2">
-                    <textarea
-                      value={editingNotes}
-                      onChange={(e) => setEditingNotes(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none"
-                      rows={3}
-                      placeholder="Add notes about this applicant..."
-                    />
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => updateNotes(viewingApplicant.id, editingNotes)}
-                        className="px-3 py-1 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 text-sm"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingApplicant(null);
-                          setEditingNotes('');
-                        }}
-                        className="px-3 py-1 bg-gray-50 text-gray-600 rounded-lg hover:bg-gray-100 text-sm"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-start space-x-2">
-                    <p className="text-gray-900 bg-gray-50 p-3 rounded-lg flex-1">
-                      {viewingApplicant.notes || 'No notes added yet'}
-                    </p>
-                    <button
-                      onClick={() => {
-                        setEditingApplicant(`notes-${viewingApplicant.id}`);
-                        setEditingNotes(viewingApplicant.notes || '');
-                      }}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Confirm Delete</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete this applicant? This action cannot be undone.
-            </p>
-            <div className="flex space-x-3">
-              <button
-                onClick={() => deleteApplicant(showDeleteConfirm)}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-              >
-                Delete
-              </button>
-              <button
-                onClick={() => setShowDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 mt-8">
-        <div className="px-5 sm:px-6 lg:px-8 py-6">
-          <div className="text-center text-sm text-gray-600">
-            ManaCLG LevelUp © 2025. Built with ❤️
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
