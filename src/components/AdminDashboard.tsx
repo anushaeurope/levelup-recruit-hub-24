@@ -110,14 +110,14 @@ const AdminDashboard = () => {
       ));
       setEditingApplicant(null);
       toast({
-        title: "Sales Updated",
-        description: `Sales count updated to ${salesCount}`,
+        title: "Registrations Updated",
+        description: `Registration count updated to ${salesCount}`,
       });
     } catch (error) {
-      console.error('Error updating sales:', error);
+      console.error('Error updating registrations:', error);
       toast({
         title: "Error",
-        description: "Failed to update sales count",
+        description: "Failed to update registration count",
         variant: "destructive"
       });
     }
@@ -136,18 +136,17 @@ const AdminDashboard = () => {
   };
 
   const handleCallClick = (phone: string) => {
-    window.open(`tel:${phone}`, '_self');
+    window.open(`tel:+91${phone}`, '_self');
   };
 
   const handleWhatsAppClick = (phone: string, name: string) => {
-    const message = `Hi ${name}, this is ManaCLG LevelUp team. We received your SRM application. Let's connect.`;
+    const message = `Hi ${name}, I'm reaching from ManaCLG LevelUp regarding your SRM application.`;
     const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, '_blank');
   };
 
   const exportToExcel = () => {
-    // Simple CSV export functionality
-    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Sales Completed', 'Application Date'];
+    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Registrations Completed', 'Application Date'];
     const csvContent = [
       headers.join(','),
       ...applicants.map(app => [
@@ -190,6 +189,7 @@ const AdminDashboard = () => {
     }
   };
 
+  // Calculate KPIs
   const thisMonth = new Date().getMonth();
   const thisYear = new Date().getFullYear();
 
@@ -199,35 +199,39 @@ const AdminDashboard = () => {
   }).length;
 
   const qualifiedCandidates = applicants.filter(app => app.status === 'Hired').length;
-  const totalSales = applicants.reduce((sum, app) => sum + app.salesCompleted, 0);
-  const targetAchieved = Math.min((totalSales / (applicants.length * 4) * 100), 100);
-
+  const totalRegistrations = applicants.reduce((sum, app) => sum + app.salesCompleted, 0);
+  const targetAchieved = Math.min((totalRegistrations / (applicants.length * 4) * 100), 100);
   const uniqueCities = [...new Set(applicants.map(app => app.city))];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-5">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <Shield className="w-8 h-8 text-blue-600 mr-3" />
+    <div className="min-h-screen bg-gray-50 font-inter">
+      {/* Header - Sticky */}
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div className="px-5 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">SRM Admin Dashboard</h1>
-                <p className="text-gray-600">ManaCLG LevelUp - Student Relationship Manager</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">SRM Admin Dashboard</h1>
+                <p className="text-sm text-gray-600 hidden sm:block">ManaCLG LevelUp – Student Relationship Manager</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-300"
+              className="flex items-center justify-center px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-xl hover:bg-red-100 transition-all duration-300 text-sm font-medium"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -236,125 +240,120 @@ const AdminDashboard = () => {
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="professional-card p-6">
+      <div className="px-5 sm:px-6 lg:px-8 py-6 sm:py-8 max-w-7xl mx-auto">
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Applicants This Month</p>
-                <p className="text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
+                <p className="text-gray-600 text-sm font-medium mb-1">Total Applicants This Month</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
               </div>
-              <Users className="w-10 h-10 text-blue-500" />
+              <div className="text-3xl">👥</div>
             </div>
           </div>
 
-          <div className="professional-card p-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Qualified Candidates</p>
-                <p className="text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
+                <p className="text-gray-600 text-sm font-medium mb-1">Qualified Candidates</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
               </div>
-              <CheckCircle className="w-10 h-10 text-green-500" />
+              <div className="text-3xl">✅</div>
             </div>
           </div>
 
-          <div className="professional-card p-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Total Sales</p>
-                <p className="text-3xl font-bold text-gray-900">{totalSales}</p>
+                <p className="text-gray-600 text-sm font-medium mb-1">Total Registrations</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{totalRegistrations}</p>
               </div>
-              <TrendingUp className="w-10 h-10 text-orange-500" />
+              <div className="text-3xl">📈</div>
             </div>
           </div>
 
-          <div className="professional-card p-6">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all duration-300">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Target Achieved</p>
-                <p className="text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
+                <p className="text-gray-600 text-sm font-medium mb-1">Target Achieved</p>
+                <p className="text-2xl sm:text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
               </div>
-              <Target className="w-10 h-10 text-purple-500" />
+              <div className="text-3xl">🎯</div>
             </div>
             <div className="mt-4 bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-orange-500 to-orange-600 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${targetAchieved}%` }}
               ></div>
             </div>
           </div>
         </div>
 
-        {/* Filters and Export */}
-        <div className="professional-card p-6 mb-8">
+        {/* Filters Section */}
+        <div className="bg-white rounded-xl p-5 sm:p-6 shadow-sm border border-gray-100 mb-8">
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="text"
-                  placeholder="Search applicants..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:input-focus"
-                />
-              </div>
+            <div className="w-full lg:flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search applicants..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl text-gray-900 placeholder-gray-500 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                  />
+                </div>
 
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:input-focus"
-              >
-                <option value="All">All Status</option>
-                <option value="New">New</option>
-                <option value="Contacted">Contacted</option>
-                <option value="Hired">Hired</option>
-              </select>
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                >
+                  <option value="All">All Status</option>
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Hired">Hired</option>
+                </select>
 
-              {/* City Filter */}
-              <select
-                value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:input-focus"
-              >
-                <option value="All">All Cities</option>
-                {uniqueCities.map(city => (
-                  <option key={city} value={city}>{city}</option>
-                ))}
-              </select>
-
-              <div className="flex items-center text-gray-600">
-                <Filter className="w-4 h-4 mr-2" />
-                <span className="text-sm">
-                  {filteredApplicants.length} of {applicants.length}
-                </span>
+                {/* City Filter */}
+                <select
+                  value={cityFilter}
+                  onChange={(e) => setCityFilter(e.target.value)}
+                  className="px-4 py-3 border border-gray-300 rounded-xl text-gray-900 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 outline-none transition-all duration-300"
+                >
+                  <option value="All">All Cities</option>
+                  {uniqueCities.map(city => (
+                    <option key={city} value={city}>{city}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* Export Button */}
-            <button
-              onClick={exportToExcel}
-              className="btn-secondary flex items-center"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export Excel
-            </button>
+            {/* Results count */}
+            <div className="flex items-center text-gray-600 text-sm">
+              <Filter className="w-4 h-4 mr-2" />
+              <span>
+                {filteredApplicants.length} of {applicants.length} applicants
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Applicants Table */}
-        <div className="professional-card overflow-hidden">
-          <div className="overflow-x-auto">
+        {/* Applicants Table/Cards */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-20">
+          {/* Desktop Table View */}
+          <div className="hidden lg:block overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicant</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Availability</th>
-                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sales</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Details</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Registrations</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
@@ -373,14 +372,9 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-2">
-                        <div className="flex items-center">
-                          <button
-                            onClick={() => handleCallClick(applicant.phone)}
-                            className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
-                          >
-                            <Phone className="w-3 h-3 mr-2" />
-                            {applicant.phone}
-                          </button>
+                        <div className="flex items-center text-sm text-gray-900">
+                          <Phone className="w-3 h-3 mr-2" />
+                          {applicant.phone}
                         </div>
                         <div className="flex items-center text-sm text-gray-600">
                           <Mail className="w-3 h-3 mr-2" />
@@ -395,50 +389,48 @@ const AdminDashboard = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        {editingApplicant === applicant.id ? (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="number"
-                              value={editingSales}
-                              onChange={(e) => setEditingSales(Number(e.target.value))}
-                              className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:input-focus"
-                              min="0"
-                            />
-                            <button
-                              onClick={() => updateSalesCount(applicant.id, editingSales)}
-                              className="text-green-600 hover:text-green-800"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => setEditingApplicant(null)}
-                              className="text-red-600 hover:text-red-800"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center space-x-2">
-                            <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
-                            <button
-                              onClick={() => {
-                                setEditingApplicant(applicant.id);
-                                setEditingSales(applicant.salesCompleted);
-                              }}
-                              className="text-gray-400 hover:text-gray-600"
-                            >
-                              <Edit2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      {editingApplicant === applicant.id ? (
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="number"
+                            value={editingSales}
+                            onChange={(e) => setEditingSales(Number(e.target.value))}
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
+                            min="0"
+                          />
+                          <button
+                            onClick={() => updateSalesCount(applicant.id, editingSales)}
+                            className="text-green-600 hover:text-green-800"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingApplicant(null)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2">
+                          <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
+                          <button
+                            onClick={() => {
+                              setEditingApplicant(applicant.id);
+                              setEditingSales(applicant.salesCompleted);
+                            }}
+                            className="text-gray-400 hover:text-gray-600"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       <select
                         value={applicant.status}
                         onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as 'New' | 'Contacted' | 'Hired')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-orange-500`}
                       >
                         <option value="New">New</option>
                         <option value="Contacted">Contacted</option>
@@ -448,21 +440,123 @@ const AdminDashboard = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-3">
                         <button
-                          onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
-                          className="text-green-600 hover:text-green-800 transition-colors"
-                          title="Send WhatsApp message"
+                          onClick={() => handleCallClick(applicant.phone)}
+                          className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-300"
+                          title="Call applicant"
                         >
-                          <MessageCircle className="w-4 h-4" />
+                          📞
                         </button>
-                        <div className="text-xs text-gray-500">
-                          {applicant.submittedAt?.toDate().toLocaleDateString()}
-                        </div>
+                        <button
+                          onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
+                          className="p-2 text-green-600 hover:text-green-800 hover:bg-green-50 rounded-lg transition-all duration-300"
+                          title="WhatsApp message"
+                        >
+                          💬
+                        </button>
                       </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden p-5">
+            <div className="space-y-4">
+              {filteredApplicants.map((applicant) => (
+                <div key={applicant.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-lg">{applicant.fullName}</h3>
+                      <p className="text-sm text-gray-600 flex items-center mt-1">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {applicant.city}
+                      </p>
+                    </div>
+                    <select
+                      value={applicant.status}
+                      onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as 'New' | 'Contacted' | 'Hired')}
+                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none`}
+                    >
+                      <option value="New">New</option>
+                      <option value="Contacted">Contacted</option>
+                      <option value="Hired">Hired</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 mb-4">
+                    <div className="flex items-center">
+                      <Phone className="w-4 h-4 mr-2 text-gray-500" />
+                      <span className="text-sm font-medium text-gray-900">{applicant.phone}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Mail className="w-4 h-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">{applicant.email}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">{applicant.workingHours} • {applicant.weeklyAvailability}</span>
+                    </div>
+                    <div className="flex items-center">
+                      <TrendingUp className="w-4 h-4 mr-2 text-gray-500" />
+                      <span className="text-sm text-gray-600">Registrations: </span>
+                      {editingApplicant === applicant.id ? (
+                        <div className="flex items-center space-x-2 ml-2">
+                          <input
+                            type="number"
+                            value={editingSales}
+                            onChange={(e) => setEditingSales(Number(e.target.value))}
+                            className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:border-orange-500 outline-none"
+                            min="0"
+                          />
+                          <button
+                            onClick={() => updateSalesCount(applicant.id, editingSales)}
+                            className="text-green-600"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setEditingApplicant(null)}
+                            className="text-red-600"
+                          >
+                            <XCircle className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center space-x-2 ml-2">
+                          <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
+                          <button
+                            onClick={() => {
+                              setEditingApplicant(applicant.id);
+                              setEditingSales(applicant.salesCompleted);
+                            }}
+                            className="text-gray-400"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-4 pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => handleCallClick(applicant.phone)}
+                      className="flex items-center px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-all duration-300 text-sm font-medium"
+                    >
+                      📞 Call
+                    </button>
+                    <button
+                      onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
+                      className="flex items-center px-3 py-2 bg-green-50 text-green-600 rounded-lg hover:bg-green-100 transition-all duration-300 text-sm font-medium"
+                    >
+                      💬 WhatsApp
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {filteredApplicants.length === 0 && (
@@ -473,6 +567,26 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Fixed Export Button */}
+      <div className="fixed bottom-5 right-5 z-50">
+        <button
+          onClick={exportToExcel}
+          className="flex items-center px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
+          <Download className="w-5 h-5 mr-2" />
+          Export as Excel
+        </button>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-gray-200 mt-8">
+        <div className="px-5 sm:px-6 lg:px-8 py-6">
+          <div className="text-center text-sm text-gray-600">
+            ManaCLG © 2025. Built with ❤️
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
