@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle, AlertCircle, User, Mail, Phone, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 const RegistrationForm = () => {
@@ -44,8 +44,8 @@ const RegistrationForm = () => {
     
     if (!formData.whyThisRole.trim()) {
       newErrors.whyThisRole = 'Please tell us why you want this role';
-    } else if (formData.whyThisRole.trim().length < 50) {
-      newErrors.whyThisRole = 'Please provide at least 50 characters explaining why you want this role';
+    } else if (formData.whyThisRole.trim().length < 100) {
+      newErrors.whyThisRole = 'Please provide at least 100 characters explaining why you want this role';
     }
 
     setErrors(newErrors);
@@ -54,6 +54,12 @@ const RegistrationForm = () => {
 
   const checkDuplicateEmail = async (email: string) => {
     const q = query(collection(db, 'applicants'), where('email', '==', email));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  };
+
+  const checkDuplicatePhone = async (phone: string) => {
+    const q = query(collection(db, 'applicants'), where('phone', '==', phone));
     const querySnapshot = await getDocs(q);
     return !querySnapshot.empty;
   };
@@ -74,12 +80,25 @@ const RegistrationForm = () => {
 
     try {
       // Check for duplicate email
-      const isDuplicate = await checkDuplicateEmail(formData.email);
-      if (isDuplicate) {
+      const isDuplicateEmail = await checkDuplicateEmail(formData.email);
+      if (isDuplicateEmail) {
         setErrors({ email: 'This email has already been registered' });
         toast({
           title: "Email Already Registered",
           description: "This email address has already been used for registration",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check for duplicate phone
+      const isDuplicatePhone = await checkDuplicatePhone(formData.phone);
+      if (isDuplicatePhone) {
+        setErrors({ phone: 'This phone number has already been registered' });
+        toast({
+          title: "Phone Already Registered",
+          description: "This phone number has already been used for registration",
           variant: "destructive"
         });
         setIsSubmitting(false);
@@ -141,29 +160,18 @@ const RegistrationForm = () => {
 
   if (showSuccess) {
     return (
-      <section id="registration-form" className="py-20 bg-gradient-to-b from-gray-800 to-gray-900">
+      <section id="registration-form" className="py-20 bg-gradient-to-r from-green-50 to-emerald-50">
         <div className="container mx-auto px-6">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-500/20 rounded-2xl p-12 animate-scale-in">
-              <CheckCircle className="w-16 h-16 text-green-400 mx-auto mb-6" />
-              <h2 className="text-3xl font-bold text-white mb-4">Application Submitted Successfully!</h2>
-              <p className="text-gray-300 text-lg mb-8">
-                Thank you for applying! Our team will reach out within 24 hours via WhatsApp.
+            <div className="professional-card p-12 animate-fade-in-up">
+              <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Application Submitted Successfully!</h2>
+              <p className="text-gray-600 text-lg mb-8">
+                Thanks for registering! Our team will reach you within 24 hours via WhatsApp.
               </p>
-              <div className="bg-gray-800/50 rounded-xl p-6 mb-6">
-                <p className="text-blue-300 font-medium">Join our official jobs channel for updates:</p>
-                <a 
-                  href="https://t.me/ManaClg_LevelUp_Jobs" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center mt-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold rounded-full hover:scale-105 transition-transform duration-300"
-                >
-                  Join Telegram Channel →
-                </a>
-              </div>
               <button
                 onClick={() => setShowSuccess(false)}
-                className="text-gray-400 hover:text-white transition-colors duration-300"
+                className="btn-secondary"
               >
                 Submit Another Application
               </button>
@@ -175,24 +183,25 @@ const RegistrationForm = () => {
   }
 
   return (
-    <section id="registration-form" className="py-20 bg-gradient-to-b from-gray-800 to-gray-900">
+    <section id="registration-form" className="py-20 bg-gray-50">
       <div className="container mx-auto px-6">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in">
-              Start Your SRM Journey
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 animate-fade-in-up">
+              Apply to Become an SRM
             </h2>
-            <p className="text-xl text-gray-300 animate-fade-in-delay">
-              Fill out the form below to join our exclusive Student Relationship Manager program
+            <p className="text-xl text-gray-600 animate-fade-in-up-delay">
+              Join our team of Student Relationship Managers and start your professional journey
             </p>
           </div>
 
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 md:p-12 shadow-2xl">
+          <div className="professional-card p-8 md:p-12">
             <form onSubmit={handleSubmit} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Full Name */}
                 <div className="space-y-2">
-                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-300">
+                  <label htmlFor="fullName" className="flex items-center text-sm font-semibold text-gray-700">
+                    <User className="w-4 h-4 mr-2" />
                     Full Name *
                   </label>
                   <input
@@ -201,13 +210,13 @@ const RegistrationForm = () => {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.fullName ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
+                      errors.fullName ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                     placeholder="Enter your full name"
                   />
                   {errors.fullName && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.fullName}
                     </p>
@@ -216,7 +225,8 @@ const RegistrationForm = () => {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+                  <label htmlFor="email" className="flex items-center text-sm font-semibold text-gray-700">
+                    <Mail className="w-4 h-4 mr-2" />
                     Email Address *
                   </label>
                   <input
@@ -225,13 +235,13 @@ const RegistrationForm = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.email ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
+                      errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                     placeholder="your.email@example.com"
                   />
                   {errors.email && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.email}
                     </p>
@@ -240,7 +250,8 @@ const RegistrationForm = () => {
 
                 {/* Phone */}
                 <div className="space-y-2">
-                  <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
+                  <label htmlFor="phone" className="flex items-center text-sm font-semibold text-gray-700">
+                    <Phone className="w-4 h-4 mr-2" />
                     Phone Number *
                   </label>
                   <input
@@ -255,14 +266,14 @@ const RegistrationForm = () => {
                         setErrors(prev => ({ ...prev, phone: '' }));
                       }
                     }}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.phone ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
+                      errors.phone ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                     placeholder="WhatsApp preferred"
                     maxLength={10}
                   />
                   {errors.phone && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.phone}
                     </p>
@@ -272,7 +283,8 @@ const RegistrationForm = () => {
 
                 {/* City */}
                 <div className="space-y-2">
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-300">
+                  <label htmlFor="city" className="flex items-center text-sm font-semibold text-gray-700">
+                    <MapPin className="w-4 h-4 mr-2" />
                     City *
                   </label>
                   <input
@@ -281,13 +293,13 @@ const RegistrationForm = () => {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.city ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 ${
+                      errors.city ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                     placeholder="Your current city"
                   />
                   {errors.city && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.city}
                     </p>
@@ -296,16 +308,16 @@ const RegistrationForm = () => {
 
                 {/* Working Hours */}
                 <div className="space-y-2">
-                  <label htmlFor="workingHours" className="block text-sm font-medium text-gray-300">
-                    Preferred Working Hours *
+                  <label htmlFor="workingHours" className="block text-sm font-semibold text-gray-700">
+                    Preferred Work Hours *
                   </label>
                   <select
                     id="workingHours"
                     name="workingHours"
                     value={formData.workingHours}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.workingHours ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 focus:input-focus transition-all duration-300 ${
+                      errors.workingHours ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                   >
                     <option value="">Select your preferred time</option>
@@ -314,7 +326,7 @@ const RegistrationForm = () => {
                     <option value="Evening">Evening (5 PM - 9 PM)</option>
                   </select>
                   {errors.workingHours && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.workingHours}
                     </p>
@@ -323,7 +335,7 @@ const RegistrationForm = () => {
 
                 {/* Weekly Availability */}
                 <div className="space-y-2">
-                  <label htmlFor="weeklyAvailability" className="block text-sm font-medium text-gray-300">
+                  <label htmlFor="weeklyAvailability" className="block text-sm font-semibold text-gray-700">
                     Weekly Availability *
                   </label>
                   <select
@@ -331,17 +343,17 @@ const RegistrationForm = () => {
                     name="weeklyAvailability"
                     value={formData.weeklyAvailability}
                     onChange={handleChange}
-                    className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 ${
-                      errors.weeklyAvailability ? 'border-red-500' : 'border-gray-600'
+                    className={`w-full px-4 py-3 border rounded-xl text-gray-900 focus:input-focus transition-all duration-300 ${
+                      errors.weeklyAvailability ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                     }`}
                   >
                     <option value="">Select your availability</option>
-                    <option value="12 hrs">12 hours/week (Minimum)</option>
+                    <option value="12 hrs">12 hours/week</option>
                     <option value="20 hrs">20 hours/week</option>
-                    <option value="30+ hrs">30+ hours/week</option>
+                    <option value="30 hrs">30 hours/week</option>
                   </select>
                   {errors.weeklyAvailability && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.weeklyAvailability}
                     </p>
@@ -351,8 +363,8 @@ const RegistrationForm = () => {
 
               {/* Why This Role */}
               <div className="space-y-2">
-                <label htmlFor="whyThisRole" className="block text-sm font-medium text-gray-300">
-                  Why do you want this role? *
+                <label htmlFor="whyThisRole" className="block text-sm font-semibold text-gray-700">
+                  Why are you applying? *
                 </label>
                 <textarea
                   id="whyThisRole"
@@ -360,20 +372,20 @@ const RegistrationForm = () => {
                   value={formData.whyThisRole}
                   onChange={handleChange}
                   rows={5}
-                  className={`w-full px-4 py-3 bg-gray-900/50 border rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 resize-none ${
-                    errors.whyThisRole ? 'border-red-500' : 'border-gray-600'
+                  className={`w-full px-4 py-3 border rounded-xl text-gray-900 placeholder-gray-400 focus:input-focus transition-all duration-300 resize-none ${
+                    errors.whyThisRole ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'
                   }`}
-                  placeholder="Tell us why you're interested in this SRM position and what makes you a good fit... (minimum 50 characters)"
+                  placeholder="Tell us why you're interested in this SRM position and what makes you a good fit... (minimum 100 characters)"
                 />
                 <div className="flex justify-between items-center">
                   {errors.whyThisRole && (
-                    <p className="text-red-400 text-sm flex items-center gap-1">
+                    <p className="text-red-500 text-sm flex items-center gap-1">
                       <AlertCircle className="w-4 h-4" />
                       {errors.whyThisRole}
                     </p>
                   )}
                   <p className="text-gray-500 text-xs ml-auto">
-                    {formData.whyThisRole.length}/50 characters minimum
+                    {formData.whyThisRole.length}/100 characters minimum
                   </p>
                 </div>
               </div>
@@ -383,7 +395,7 @@ const RegistrationForm = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="group relative w-full flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl text-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                 >
                   {isSubmitting ? (
                     <>
@@ -392,11 +404,10 @@ const RegistrationForm = () => {
                     </>
                   ) : (
                     <>
-                      <Send className="w-5 h-5 mr-2 group-hover:translate-x-1 transition-transform duration-300" />
+                      <Send className="w-5 h-5 mr-2" />
                       Submit Application
                     </>
                   )}
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-purple-700 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 -z-10"></div>
                 </button>
               </div>
             </form>

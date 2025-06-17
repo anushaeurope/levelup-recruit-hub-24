@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, updateDoc, query, orderBy, where, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Users, TrendingUp, Target, LogOut, Search, Filter, Edit2, Phone, Mail, MapPin, Clock, CheckCircle, XCircle, AlertCircle, Download, MessageCircle, Shield } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Applicant {
@@ -135,42 +135,70 @@ const AdminDashboard = () => {
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'New':
-        return <AlertCircle className="w-4 h-4 text-blue-400" />;
-      case 'Contacted':
-        return <Clock className="w-4 h-4 text-yellow-400" />;
-      case 'Hired':
-        return <CheckCircle className="w-4 h-4 text-green-400" />;
-      default:
-        return <XCircle className="w-4 h-4 text-gray-400" />;
-    }
+  const handleCallClick = (phone: string) => {
+    window.open(`tel:${phone}`, '_self');
+  };
+
+  const handleWhatsAppClick = (phone: string, name: string) => {
+    const message = `Hi ${name}, this is ManaCLG LevelUp team. We received your SRM application. Let's connect.`;
+    const whatsappUrl = `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const exportToExcel = () => {
+    // Simple CSV export functionality
+    const headers = ['Name', 'Email', 'Phone', 'City', 'Working Hours', 'Weekly Availability', 'Status', 'Sales Completed', 'Application Date'];
+    const csvContent = [
+      headers.join(','),
+      ...applicants.map(app => [
+        app.fullName,
+        app.email,
+        app.phone,
+        app.city,
+        app.workingHours,
+        app.weeklyAvailability,
+        app.status,
+        app.salesCompleted,
+        app.submittedAt?.toDate().toLocaleDateString()
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'srm_applicants.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Export Successful",
+      description: "Applicants data has been exported to CSV file",
+    });
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'New':
-        return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
+        return 'text-blue-600 bg-blue-50 border-blue-200';
       case 'Contacted':
-        return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20';
+        return 'text-orange-600 bg-orange-50 border-orange-200';
       case 'Hired':
-        return 'text-green-400 bg-green-400/10 border-green-400/20';
+        return 'text-green-600 bg-green-50 border-green-200';
       default:
-        return 'text-gray-400 bg-gray-400/10 border-gray-400/20';
+        return 'text-gray-600 bg-gray-50 border-gray-200';
     }
   };
 
   const thisMonth = new Date().getMonth();
   const thisYear = new Date().getFullYear();
-  const thisWeek = Math.ceil(new Date().getDate() / 7);
 
   const monthlyApplicants = applicants.filter(app => {
     const date = app.submittedAt?.toDate();
     return date && date.getMonth() === thisMonth && date.getFullYear() === thisYear;
   }).length;
 
-  const weeklyRegistrations = applicants.filter(app => app.salesCompleted > 0).length;
+  const qualifiedCandidates = applicants.filter(app => app.status === 'Hired').length;
   const totalSales = applicants.reduce((sum, app) => sum + app.salesCompleted, 0);
   const targetAchieved = Math.min((totalSales / (applicants.length * 4) * 100), 100);
 
@@ -178,25 +206,28 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700/50">
+      <header className="bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">SRM Admin Dashboard</h1>
-              <p className="text-gray-400">ManaCLG LevelUp - Student Relationship Manager</p>
+            <div className="flex items-center">
+              <Shield className="w-8 h-8 text-blue-600 mr-3" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">SRM Admin Dashboard</h1>
+                <p className="text-gray-600">ManaCLG LevelUp - Student Relationship Manager</p>
+              </div>
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center px-4 py-2 bg-red-600/20 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-600/30 transition-colors duration-300"
+              className="flex items-center px-4 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg hover:bg-red-100 transition-colors duration-300"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
@@ -208,134 +239,150 @@ const AdminDashboard = () => {
       <div className="container mx-auto px-6 py-8">
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div className="professional-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Applicants This Month</p>
-                <p className="text-2xl font-bold text-white">{monthlyApplicants}</p>
+                <p className="text-gray-600 text-sm font-medium">Total Applicants This Month</p>
+                <p className="text-3xl font-bold text-gray-900">{monthlyApplicants}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-400" />
+              <Users className="w-10 h-10 text-blue-500" />
             </div>
           </div>
 
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div className="professional-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Active SRMs</p>
-                <p className="text-2xl font-bold text-white">{applicants.filter(app => app.status === 'Hired').length}</p>
+                <p className="text-gray-600 text-sm font-medium">Qualified Candidates</p>
+                <p className="text-3xl font-bold text-gray-900">{qualifiedCandidates}</p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-400" />
+              <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
           </div>
 
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div className="professional-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Total Sales</p>
-                <p className="text-2xl font-bold text-white">{totalSales}</p>
+                <p className="text-gray-600 text-sm font-medium">Total Sales</p>
+                <p className="text-3xl font-bold text-gray-900">{totalSales}</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-yellow-400" />
+              <TrendingUp className="w-10 h-10 text-orange-500" />
             </div>
           </div>
 
-          <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6">
+          <div className="professional-card p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-400 text-sm">Target Achieved</p>
-                <p className="text-2xl font-bold text-white">{targetAchieved.toFixed(1)}%</p>
+                <p className="text-gray-600 text-sm font-medium">Target Achieved</p>
+                <p className="text-3xl font-bold text-gray-900">{targetAchieved.toFixed(1)}%</p>
               </div>
-              <Target className="w-8 h-8 text-purple-400" />
+              <Target className="w-10 h-10 text-purple-500" />
             </div>
-            <div className="mt-3 bg-gray-700 rounded-full h-2">
+            <div className="mt-4 bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-gradient-to-r from-purple-600 to-blue-600 h-2 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-500"
                 style={{ width: `${targetAchieved}%` }}
               ></div>
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                type="text"
-                placeholder="Search applicants..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+        {/* Filters and Export */}
+        <div className="professional-card p-6 mb-8">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-1">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search applicants..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:input-focus"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:input-focus"
+              >
+                <option value="All">All Status</option>
+                <option value="New">New</option>
+                <option value="Contacted">Contacted</option>
+                <option value="Hired">Hired</option>
+              </select>
+
+              {/* City Filter */}
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-gray-900 focus:input-focus"
+              >
+                <option value="All">All Cities</option>
+                {uniqueCities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+
+              <div className="flex items-center text-gray-600">
+                <Filter className="w-4 h-4 mr-2" />
+                <span className="text-sm">
+                  {filteredApplicants.length} of {applicants.length}
+                </span>
+              </div>
             </div>
 
-            {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            {/* Export Button */}
+            <button
+              onClick={exportToExcel}
+              className="btn-secondary flex items-center"
             >
-              <option value="All">All Status</option>
-              <option value="New">New</option>
-              <option value="Contacted">Contacted</option>
-              <option value="Hired">Hired</option>
-            </select>
-
-            {/* City Filter */}
-            <select
-              value={cityFilter}
-              onChange={(e) => setCityFilter(e.target.value)}
-              className="px-3 py-2 bg-gray-900/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">All Cities</option>
-              {uniqueCities.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
-            </select>
-
-            <div className="flex items-center text-gray-400">
-              <Filter className="w-4 h-4 mr-2" />
-              <span className="text-sm">
-                Showing {filteredApplicants.length} of {applicants.length} applicants
-              </span>
-            </div>
+              <Download className="w-4 h-4 mr-2" />
+              Export Excel
+            </button>
           </div>
         </div>
 
         {/* Applicants Table */}
-        <div className="bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-xl overflow-hidden">
+        <div className="professional-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-900/50">
+              <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Applicant</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Contact</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Availability</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Sales</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-300">Actions</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Applicant</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Availability</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sales</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700/50">
+              <tbody className="divide-y divide-gray-200">
                 {filteredApplicants.map((applicant) => (
-                  <tr key={applicant.id} className="hover:bg-gray-700/30 transition-colors duration-200">
+                  <tr key={applicant.id} className="hover:bg-gray-50 transition-colors duration-200">
                     <td className="px-6 py-4">
                       <div>
-                        <div className="font-medium text-white">{applicant.fullName}</div>
-                        <div className="text-sm text-gray-400 flex items-center mt-1">
+                        <div className="font-semibold text-gray-900">{applicant.fullName}</div>
+                        <div className="text-sm text-gray-600 flex items-center mt-1">
                           <MapPin className="w-3 h-3 mr-1" />
                           {applicant.city}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center text-sm text-gray-300">
-                          <Phone className="w-3 h-3 mr-2" />
-                          {applicant.phone}
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <button
+                            onClick={() => handleCallClick(applicant.phone)}
+                            className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <Phone className="w-3 h-3 mr-2" />
+                            {applicant.phone}
+                          </button>
                         </div>
-                        <div className="flex items-center text-sm text-gray-300">
+                        <div className="flex items-center text-sm text-gray-600">
                           <Mail className="w-3 h-3 mr-2" />
                           {applicant.email}
                         </div>
@@ -343,8 +390,8 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        <div className="text-sm text-gray-300">{applicant.workingHours}</div>
-                        <div className="text-xs text-gray-400">{applicant.weeklyAvailability}</div>
+                        <div className="text-sm font-medium text-gray-900">{applicant.workingHours}</div>
+                        <div className="text-xs text-gray-600">{applicant.weeklyAvailability}</div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -355,31 +402,31 @@ const AdminDashboard = () => {
                               type="number"
                               value={editingSales}
                               onChange={(e) => setEditingSales(Number(e.target.value))}
-                              className="w-16 px-2 py-1 bg-gray-900 border border-gray-600 rounded text-white text-sm"
+                              className="w-16 px-2 py-1 border border-gray-300 rounded text-gray-900 text-sm focus:input-focus"
                               min="0"
                             />
                             <button
                               onClick={() => updateSalesCount(applicant.id, editingSales)}
-                              className="text-green-400 hover:text-green-300"
+                              className="text-green-600 hover:text-green-800"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setEditingApplicant(null)}
-                              className="text-red-400 hover:text-red-300"
+                              className="text-red-600 hover:text-red-800"
                             >
                               <XCircle className="w-4 h-4" />
                             </button>
                           </div>
                         ) : (
                           <div className="flex items-center space-x-2">
-                            <span className="text-white font-medium">{applicant.salesCompleted}</span>
+                            <span className="font-semibold text-gray-900">{applicant.salesCompleted}</span>
                             <button
                               onClick={() => {
                                 setEditingApplicant(applicant.id);
                                 setEditingSales(applicant.salesCompleted);
                               }}
-                              className="text-gray-400 hover:text-white"
+                              className="text-gray-400 hover:text-gray-600"
                             >
                               <Edit2 className="w-3 h-3" />
                             </button>
@@ -391,7 +438,7 @@ const AdminDashboard = () => {
                       <select
                         value={applicant.status}
                         onChange={(e) => updateApplicantStatus(applicant.id, e.target.value as 'New' | 'Contacted' | 'Hired')}
-                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                        className={`px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(applicant.status)} focus:outline-none focus:ring-2 focus:ring-blue-500`}
                       >
                         <option value="New">New</option>
                         <option value="Contacted">Contacted</option>
@@ -399,11 +446,17 @@ const AdminDashboard = () => {
                       </select>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(applicant.status)}
-                        <span className="text-xs text-gray-400">
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => handleWhatsAppClick(applicant.phone, applicant.fullName)}
+                          className="text-green-600 hover:text-green-800 transition-colors"
+                          title="Send WhatsApp message"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                        <div className="text-xs text-gray-500">
                           {applicant.submittedAt?.toDate().toLocaleDateString()}
-                        </span>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -414,8 +467,8 @@ const AdminDashboard = () => {
 
           {filteredApplicants.length === 0 && (
             <div className="text-center py-12">
-              <Users className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-              <p className="text-gray-400">No applicants found matching your criteria</p>
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">No applicants found matching your criteria</p>
             </div>
           )}
         </div>

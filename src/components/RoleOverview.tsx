@@ -1,104 +1,103 @@
 
 import React from 'react';
-import { DollarSign, Clock, Target, TrendingUp, Award, BookOpen } from 'lucide-react';
+import { DollarSign, Clock, Target, TrendingUp, Award, BookOpen, Home, CheckCircle } from 'lucide-react';
 
 const RoleOverview = () => {
   const features = [
     {
       icon: DollarSign,
-      title: "Fixed Salary",
-      value: "₹10,000/month",
-      description: "Paid monthly via UPI or bank transfer",
-      gradient: "from-green-500 to-emerald-600"
+      title: "Monthly Salary",
+      value: "₹10,000",
+      description: "Fixed monthly payment via UPI or bank transfer",
+      color: "from-green-500 to-emerald-600"
     },
     {
       icon: Clock,
-      title: "Flexible Hours",
-      value: "4 hrs/day minimum",
-      description: "12 hrs/week commitment required",
-      gradient: "from-blue-500 to-cyan-600"
+      title: "Daily Work",
+      value: "4 hours/day",
+      description: "OR 12+ hours/week minimum commitment",
+      color: "from-blue-500 to-cyan-600"
     },
     {
       icon: Target,
-      title: "Weekly Target",
-      value: "1 confirmed registration",
+      title: "Minimum Target",
+      value: "1 registration/week",
       description: "Only confirmed student enrollments count",
-      gradient: "from-purple-500 to-violet-600"
+      color: "from-purple-500 to-violet-600"
     },
     {
       icon: TrendingUp,
-      title: "Bonus Earnings",
-      value: "₹500/sale",
-      description: "After 4th registration in a month",
-      gradient: "from-orange-500 to-red-600"
+      title: "Incentives",
+      value: "₹500–₹1000",
+      description: "Per confirmed registration after 4/month",
+      color: "from-orange-500 to-red-600"
     },
     {
       icon: Award,
-      title: "Professional Perks",
-      value: "LOR + Payslip + Certificate",
-      description: "Experience Certificate issued after 4 weeks + minimum 4 sales",
-      gradient: "from-pink-500 to-rose-600"
+      title: "Benefits",
+      value: "LOR + Certificate",
+      description: "Experience Certificate, Monthly Payslip",
+      color: "from-pink-500 to-rose-600"
     },
     {
       icon: BookOpen,
-      title: "Daily Training",
-      value: "1-hour guided sessions",
-      description: "Comprehensive skill development included",
-      gradient: "from-indigo-500 to-blue-600"
+      title: "Free Training",
+      value: "1 hour daily",
+      description: "Guided training before work begins",
+      color: "from-indigo-500 to-blue-600"
+    },
+    {
+      icon: Home,
+      title: "Work From Home",
+      value: "100% Remote",
+      description: "Work from anywhere with internet",
+      color: "from-teal-500 to-cyan-600"
+    },
+    {
+      icon: CheckCircle,
+      title: "Professional Growth",
+      value: "Career Development",
+      description: "Build communication & sales skills",
+      color: "from-emerald-500 to-green-600"
     }
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-b from-gray-900 to-gray-800">
+    <section className="py-20 bg-white">
       <div className="container mx-auto px-6">
         <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-fade-in">
-            What You'll Get
+          <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 animate-fade-in-up">
+            SRM Role Details
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto animate-fade-in-delay">
-            Join our premium SRM program and unlock a world of opportunities with competitive compensation and professional growth.
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto animate-fade-in-up-delay">
+            Everything you need to know about becoming a Student Relationship Manager at ManaCLG LevelUp
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative bg-gray-800/50 backdrop-blur-sm border border-gray-700/50 rounded-2xl p-8 hover:bg-gray-800/70 transition-all duration-500 hover:scale-105 hover:shadow-2xl animate-fade-in"
+              className="professional-card p-6 hover:shadow-xl transition-all duration-500 hover:scale-105 animate-fade-in-up"
               style={{ animationDelay: `${index * 100}ms` }}
             >
-              {/* Gradient background on hover */}
-              <div className={`absolute inset-0 bg-gradient-to-r ${feature.gradient} rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
-              
               {/* Icon */}
-              <div className={`relative inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r ${feature.gradient} rounded-xl mb-6 group-hover:scale-110 transition-transform duration-300`}>
-                <feature.icon className="w-8 h-8 text-white" />
+              <div className={`inline-flex items-center justify-center w-14 h-14 bg-gradient-to-r ${feature.color} rounded-xl mb-4 shadow-lg`}>
+                <feature.icon className="w-7 h-7 text-white" />
               </div>
 
               {/* Content */}
-              <div className="relative">
-                <h3 className="text-xl font-semibold text-white mb-3 group-hover:text-blue-300 transition-colors duration-300">
-                  {feature.title}
-                </h3>
-                <p className="text-2xl font-bold text-transparent bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text mb-3">
-                  {feature.value}
-                </p>
-                <p className="text-gray-400 text-sm leading-relaxed group-hover:text-gray-300 transition-colors duration-300">
-                  {feature.description}
-                </p>
-              </div>
-
-              {/* Hover effect border */}
-              <div className="absolute inset-0 border-2 border-transparent group-hover:border-blue-500/30 rounded-2xl transition-colors duration-500"></div>
+              <h3 className="text-lg font-bold text-gray-900 mb-2">
+                {feature.title}
+              </h3>
+              <p className="text-xl font-black gradient-text-primary mb-3">
+                {feature.value}
+              </p>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {feature.description}
+              </p>
             </div>
           ))}
-        </div>
-
-        {/* Call to action section */}
-        <div className="text-center mt-16">
-          <div className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-600/20 to-orange-600/20 backdrop-blur-sm border border-yellow-500/20 rounded-full">
-            <span className="text-yellow-300 font-medium">⚠️ Limited positions available - First come, first serve</span>
-          </div>
         </div>
       </div>
     </section>

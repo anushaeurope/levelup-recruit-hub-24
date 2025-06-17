@@ -53,16 +53,6 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
-				sidebar: {
-					DEFAULT: 'hsl(var(--sidebar-background))',
-					foreground: 'hsl(var(--sidebar-foreground))',
-					primary: 'hsl(var(--sidebar-primary))',
-					'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-					accent: 'hsl(var(--sidebar-accent))',
-					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-					border: 'hsl(var(--sidebar-border))',
-					ring: 'hsl(var(--sidebar-ring))'
-				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -96,7 +86,7 @@ export default {
 						transform: 'translateY(0)'
 					}
 				},
-				'slide-up': {
+				'fade-in-up': {
 					'0%': {
 						opacity: '0',
 						transform: 'translateY(30px)'
@@ -116,36 +106,12 @@ export default {
 						transform: 'scale(1)'
 					}
 				},
-				'float-slow': {
+				'float-gentle': {
 					'0%, 100%': {
-						transform: 'translateY(0px) rotate(0deg)'
+						transform: 'translateY(0px)'
 					},
 					'50%': {
-						transform: 'translateY(-10px) rotate(5deg)'
-					}
-				},
-				'float-medium': {
-					'0%, 100%': {
-						transform: 'translateY(0px) rotate(0deg)'
-					},
-					'50%': {
-						transform: 'translateY(-15px) rotate(-5deg)'
-					}
-				},
-				'float-fast': {
-					'0%, 100%': {
-						transform: 'translateY(0px) rotate(0deg)'
-					},
-					'50%': {
-						transform: 'translateY(-20px) rotate(3deg)'
-					}
-				},
-				'pulse-slow': {
-					'0%, 100%': {
-						opacity: '1'
-					},
-					'50%': {
-						opacity: '0.8'
+						transform: 'translateY(-10px)'
 					}
 				}
 			},
@@ -154,15 +120,13 @@ export default {
 				'accordion-up': 'accordion-up 0.2s ease-out',
 				'fade-in': 'fade-in 0.8s ease-out',
 				'fade-in-delay': 'fade-in 0.8s ease-out 0.2s both',
-				'slide-up': 'slide-up 0.8s ease-out',
-				'slide-up-delay': 'slide-up 0.8s ease-out 0.4s both',
+				'fade-in-up': 'fade-in-up 0.8s ease-out',
+				'fade-in-up-delay': 'fade-in-up 0.8s ease-out 0.3s both',
 				'scale-in': 'scale-in 0.5s ease-out',
-				'float-slow': 'float-slow 6s ease-in-out infinite',
-				'float-medium': 'float-medium 4s ease-in-out infinite',
-				'float-fast': 'float-fast 3s ease-in-out infinite',
-				'pulse-slow': 'pulse-slow 3s ease-in-out infinite'
+				'float-gentle': 'float-gentle 6s ease-in-out infinite',
 			},
 			fontFamily: {
+				'inter': ['Inter', 'sans-serif'],
 				'montserrat': ['Montserrat', 'sans-serif'],
 			}
 		}
